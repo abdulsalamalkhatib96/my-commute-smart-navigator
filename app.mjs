@@ -329,6 +329,7 @@ function initializeMap(token) {
     feedback('تعذر تشغيل Mapbox GL JS. افحص الاتصال ودعم WebGL.',true);return;
   }
   state.token = token;
+  document.body.classList.remove('needs-mapbox-setup');
   safeStorageSet('token', token);
   $('token').value = token;
   $('map').replaceChildren();
@@ -395,8 +396,46 @@ function recenterDriver(){
   if(camera){state.map.easeTo(camera);state.lastCameraAt=Date.now();}
   else feedback('انتظر تحسن دقة GPS قبل تمركز الخريطة.',true);
 }
+let activeWakeLock=null;
+let wakeDesired=false;
+let wakeGeneration=0;
+function showWakeStatus(){
+  const label=$('wake-status'),button=$('wake-toggle');
+  if(!label||!button)return;
+  button.setAttribute('aria-pressed',String(wakeDesired));
+  button.textContent=wakeDesired?'السماح بانطفاء الشاشة':'إبقاء الشاشة مضاءة';
+  label.textContent=!('wakeLock' in navigator)?'ميزة إبقاء الشاشة مضاءة غير مدعومة في هذا المتصفح.':
+    activeWakeLock&&!activeWakeLock.released?'الشاشة مضاءة عبر المتصفح حتى انتهاء الجلسة أو إلغائها.':
+    wakeDesired?'بانتظار إمكانية إبقاء الشاشة مضاءة (تحتاج HTTPS وصفحة نشطة).':'الميزة متوقفة؛ يمكن للهاتف إطفاء الشاشة.';
+}
+function disableWakeLock(){
+  wakeDesired=false;wakeGeneration++;
+  const existing=activeWakeLock;activeWakeLock=null;
+  if(existing)void existing.release().catch(()=>{});
+  showWakeStatus();
+}
+async function requestWakeLock(){
+  if(!wakeDesired||!state.driveMode||document.hidden||!('wakeLock' in navigator)){showWakeStatus();return;}
+  if(activeWakeLock&&!activeWakeLock.released){showWakeStatus();return;}
+  const generation=++wakeGeneration;
+  try{
+    const sentinel=await navigator.wakeLock.request('screen');
+    if(generation!==wakeGeneration||!wakeDesired||!state.driveMode||document.hidden){
+      await sentinel.release();return;
+    }
+    activeWakeLock=sentinel;
+    sentinel.addEventListener('release',()=>{
+      if(activeWakeLock===sentinel)activeWakeLock=null;
+      showWakeStatus();
+    });
+  }catch(error){
+    $('wake-status').textContent='تعذر إبقاء الشاشة مضاءة: '+(error?.message||'منع المتصفح العملية');
+  }
+  showWakeStatus();
+}
 function toggleDriveMode(enabled){
   state.driveMode=Boolean(enabled);
+  if(!state.driveMode)disableWakeLock();
   document.body.classList.toggle('drive-mode',state.driveMode);
   $('drive-mode-toggle').textContent=state.driveMode?'لوحة التحكم':'وضع خريطة القيادة';
   $('drive-toolbar').hidden=!state.driveMode;
@@ -683,6 +722,7 @@ function wireEvents() {
   $('dock-work').addEventListener('click',()=>$('quick-work').click());
   $('dock-map').addEventListener('click',()=>$('drive-mode-toggle').click());
   showAdvanced(safeStorageGet('showAdvanced')==='true');
+  document.body.classList.toggle('needs-mapbox-setup',!(safeStorageGet('token')||MAPBOX_PUBLIC_TOKEN));
   $('export-secure').addEventListener('click',exportEncryptedData);
   $('import-secure').addEventListener('change',importEncryptedData);
   $('reminder-save').addEventListener('click',saveReminders);
@@ -691,6 +731,9 @@ function wireEvents() {
   window.setInterval(checkReminders,30000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReminders();});
   $('drive-mode-toggle').addEventListener('click',()=>toggleDriveMode(!state.driveMode));
+  $('wake-toggle').addEventListener('click',()=>{if(!wakeDesired){wakeDesired=true;void requestWakeLock();}else disableWakeLock();});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&wakeDesired)void requestWakeLock();else showWakeStatus();});
+  showWakeStatus();
   $('drive-exit').addEventListener('click',()=>toggleDriveMode(false));
   $('drive-center').addEventListener('click',recenterDriver);
   $('drive-waze').addEventListener('click',()=>$('open-waze').click());

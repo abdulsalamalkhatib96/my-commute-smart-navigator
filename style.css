@@ -116,3 +116,9 @@ footer a{color:#057c70;font-weight:700}
  .panel{padding:16px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Clear first-use onboarding and opt-in browser wake lock controls */
+.needs-mapbox-setup #setup-panel{display:block;border:2px solid #0a9680;box-shadow:0 7px 23px #087f7622}
+.drive-mode #wake-toggle[aria-pressed=true]{background:#086a54;color:#fff}
+.drive-mode #wake-status{line-height:1.4;font-size:.76rem;color:#435f72;margin:0}
+.drive-mode .drive-actions button{font-size:.83rem;min-width:110px}
