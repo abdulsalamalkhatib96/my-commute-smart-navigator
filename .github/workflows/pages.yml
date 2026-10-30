@@ -1,0 +1,41 @@
+name: Deploy website to GitHub Pages
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node tests
+        run: node --test tests/*.test.mjs
+      - name: Build safe static artifact
+        run: |
+          mkdir -p public/assets
+          cp index.html style.css app.mjs nav-core.mjs decision-core.mjs trip-store.mjs sw.js manifest.webmanifest public/
+          cp assets/icon-192.png assets/icon-512.png public/assets/
+          touch public/.nojekyll
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
