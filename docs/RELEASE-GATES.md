@@ -1,3 +1,22 @@
+# Web-only delivery scope — 30 October 2026
+
+**Current product target: website / PWA only. Android, iOS, Android Auto and CarPlay are explicitly out of scope until the owner requests them.** The historical experimental Android sources are not part of this release.
+
+## Implemented in the web branch
+- Saved home/work departure preview without continuous GPS and automatic refresh in an active tab.
+- Mapbox congestion-per-segment coloring when annotations match geometry; unknown segments explicitly shown as unknown.
+- Best-effort toll-road exclusion and warnings; no guarantee of avoiding Salik or exact gate fees.
+- Existing route ranking, fuel budget, history export/import, manual toll estimate and Waze handoff.
+
+## Web validation still required outside code
+- A valid URL-restricted Mapbox public token; account and monthly billing alerts.
+- Real UAE traffic responses with alternatives and observed annotation coverage.
+- GPS road tests on a physical phone; no reliable background/locked-screen geolocation is promised.
+- Mapbox/Waze ETA comparison on several real commutes.
+- Enable GitHub Pages in repository settings and run the workflow once.
+
+---
+
 # Delivery gates — what must be demonstrated before claiming "Waze replacement"
 
 All items start **unverified** until supported by evidence. A green unit-test pipeline is insufficient.
