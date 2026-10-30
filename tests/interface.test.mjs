@@ -24,3 +24,9 @@ test('full screen map mode is accessible with exit and Waze handoff',()=>{
  for(const id of ['drive-mode-toggle','drive-toolbar','drive-summary','drive-center','drive-waze','drive-exit'])assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(js,/toggleDriveMode/);
 });
+
+test('professional mobile navigation and advanced controls are bound',()=>{
+ for(const id of ['advanced-toggle','dock-home','dock-work','dock-map','journey-planner','live-trip']) assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(js,/MAPBOX_PUBLIC_TOKEN/);
+ assert.match(sw,/public-config\.mjs/);
+});

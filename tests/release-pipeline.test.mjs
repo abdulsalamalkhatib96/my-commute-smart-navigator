@@ -19,6 +19,6 @@ test('website deploy runs automatically on main and manually on demand',()=>{
 });
 test('deployment does not bundle native app or hidden local tokens',()=>{
  const deploy=read('.github/workflows/pages.yml');
- const copy=deploy.split('Build safe static artifact')[1]?.split('- name: Configure Pages')[0]||'';
+ const copy=deploy.split('Build safe static artifact')[1]?.split('- name: Inject domain-restricted')[0]||'';
  assert.doesNotMatch(copy,/android\/|\.env|secrets\.|gradle/);
 });
