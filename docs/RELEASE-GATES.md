@@ -53,7 +53,8 @@ All items start **unverified** until supported by evidence. A green unit-test pi
 - [ ] Calibrated ETA versus Waze over 20–30 trips with different departure windows
 - [x] Historical weekday/hour departure comparison with sample count and low/medium confidence labels (not a traffic forecast)
 - [ ] Calibrated forward-looking departure predictions with uncertainty
-- [ ] Authenticated Laravel sync and cross-device encrypted backups (if demanded)
+- [x] AES-256-GCM password-encrypted local cross-device backup export/import (manual file transfer).
+- [ ] Authenticated Laravel cloud sync (requires a deployed and secured backend)
 - [ ] Privacy policy, retention controls, data export/delete, billing guardrails and API usage budgets
 - [ ] Opt-in departure reminders and device-specific push notifications
 

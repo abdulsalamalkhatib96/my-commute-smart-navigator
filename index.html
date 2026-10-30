@@ -113,6 +113,12 @@
         <p id="historical" class="help"></p>
         <div class="horizontal wrap-buttons"><button type="button" class="secondary" id="export-json">نسخة JSON</button><button type="button" class="secondary" id="export-csv">تصدير CSV</button><label for="import-json" class="upload-button">استيراد JSON</label><input type="file" id="import-json" accept="application/json,.json" hidden><button type="button" class="secondary danger" id="delete-history">حذف السجل</button></div>
         <section class="profile-backup"><strong>نسخة عناوينك وإعداداتك</strong><p class="help">لا تتضمن مفتاح Mapbox ولا سجل الرحلات (له تصدير منفصل).</p><div class="horizontal wrap-buttons"><button id="export-profile" type="button" class="secondary">تصدير الإعدادات</button><label for="import-profile" class="upload-button">استيراد الإعدادات</label><input type="file" id="import-profile" hidden accept="application/json,.json"></div></section>
+        <section class="profile-backup"><strong>نسخة احتياطية مشفرة بكلمة مرور</strong>
+          <p class="help">تضم الأماكن والإعدادات والرحلات. يتم التشفير داخل المتصفح فقط باستخدام AES-GCM؛ لن تتضمن مفتاح Mapbox. فقدان كلمة المرور يعني عدم إمكانية استعادة النسخة.</p>
+          <label class="fieldlabel" for="backup-password">كلمة مرور قوية للنسخة (12 حرفًا على الأقل)</label>
+          <input type="password" id="backup-password" minlength="12" autocomplete="new-password" aria-label="كلمة مرور النسخة المشفرة">
+          <div class="horizontal wrap-buttons"><button id="export-secure" type="button" class="secondary">تصدير مشفر</button><label for="import-secure" class="upload-button">استيراد نسخة مشفرة</label><input id="import-secure" type="file" hidden accept="application/json,.json"></div>
+        </section>
         <section class="profile-backup"><strong>خصوصية بياناتك</strong><p class="help">يمكنك حذف العناوين ومفتاح Mapbox والرحلات والإعدادات والتذكيرات المخزنة في المتصفح. تأكد من تصدير النسخ الاحتياطية التي تحتاجها أولًا.</p><button type="button" id="clear-all-data" class="secondary danger">حذف كل بياناتي المحلية</button></section>
         <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. لا يوجد حساب أو مزامنة بين الأجهزة في هذه النسخة.</p>
       </section>
