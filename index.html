@@ -35,6 +35,7 @@
         <p class="help">إذا أضفت المفتاح العام إلى GitHub Actions Secret باسم <code>MAPBOX_PUBLIC_TOKEN</code> ستعمل الخرائط تلقائيًا بعد النشر. ويمكنك إدخال مفتاح <code>pk.</code> هنا وحفظه في هذا المتصفح؛ لا تستخدم مفتاح <code>sk.</code> السري.</p>
         <div class="horizontal"><input id="token" type="password" inputmode="text" placeholder="pk. …" autocomplete="off" aria-label="Public Mapbox token"><button id="save-token" type="button">توصيل الخرائط</button></div>
         <p class="help">الرمز العام سيُحفظ محليًا في هذا المتصفح فقط. قيّد النطاقات المسموحة في لوحة Mapbox قبل النشر.</p>
+        <div class="provider-diagnostics"><button id="mapbox-diagnose" class="secondary" type="button">فحص اتصال Mapbox والمسارات</button><p id="mapbox-diagnostics" class="help" role="status" aria-live="polite">يفحص مسارًا عامًا بين دبي مول وسيتي سنتر عجمان، ولا يستخدم مكان منزلك أو عملك.</p></div>
         <p id="api-budget" class="help" aria-live="polite">جارٍ تحميل حدود الطلبات اليومية…</p>
         <p class="help">حدود الاستهلاك محلية لهذا المتصفح فقط؛ لا تمنع رسوم الحساب لدى Mapbox. فعّل إنذارات الميزانية من لوحة Mapbox.</p>
       </section>

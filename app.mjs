@@ -4,6 +4,7 @@ import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} fro
 import {estimateSalik,salikVatScenario} from './salik-core.mjs';
 import {SALIK_GATES,priceCrossings,priceChargedCount} from './salik-ledger.mjs';
 import {compareTotalRouteCosts} from './route-cost-core.mjs';
+import {TEST_ROUTE,mapboxHealthReport} from './provider-health.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation,routeTollEvidence} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
@@ -772,7 +773,31 @@ async function searchPlace() {
     if (!$('results').childElementCount) $('results').textContent='لا توجد نتائج. جرّب تحديد البيت بالنقر على الخريطة.';
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
+async function diagnoseMapbox(){
+ const token=(state.token||$('token').value||'').trim(),button=$('mapbox-diagnose'),result=$('mapbox-diagnostics');
+ if(!/^pk\\.[A-Za-z0-9._-]+$/.test(token)){result.textContent='أدخل مفتاح Mapbox العام pk. أو فعّل إعداد الخرائط أولًا.';return;}
+ try{spendApiRequest('routing');}catch(error){result.textContent=error.message;return;}
+ button.disabled=true;result.textContent='جارٍ التحقق من خدمة المسارات باستخدام معلمين عامين فقط…';
+ try{
+  const url=directionsUrl(TEST_ROUTE.from,TEST_ROUTE.to,token);
+  const controller=new AbortController();
+  const timeout=window.setTimeout(()=>controller.abort(),14000);
+  let response,payload;
+  try{response=await fetch(url,{signal:controller.signal});payload=await response.json();}
+  finally{clearTimeout(timeout);}
+  const report=mapboxHealthReport(response.status,payload);
+  result.textContent=report.ok?
+    '✓ الاتصال والمسارات يعملان. عدد البدائل: '+report.routes+'، أقصر مدة تقديرية: '+report.shortestMinutes+
+    ' دقيقة. بيانات الازدحام: '+(report.trafficCoverage?'متاحة في عينة الاختبار':'غير مثبتة في العينة')+
+    '. هذا فحص تقني لمعالم عامة، وليس دليلًا على دقة رحلتك الشخصية.':
+    '✕ '+report.message;
+ }catch(error){
+  result.textContent=error.name==='AbortError'?'انتهت مهلة الاتصال (14 ثانية). تحقق من الإنترنت ونطاقات Mapbox.':
+   'تعذر الوصول لخدمة Mapbox. افحص الإنترنت وصلاحيات المفتاح في لوحة التحكم.';
+ }finally{button.disabled=false;}
+}
 function wireEvents() {
+  $('mapbox-diagnose').addEventListener('click',diagnoseMapbox);
   function showAdvanced(show){
     document.body.classList.toggle('show-advanced',Boolean(show));
     $('advanced-toggle').setAttribute('aria-expanded',String(Boolean(show)));

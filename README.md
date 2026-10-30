@@ -171,3 +171,8 @@ References: https://www.dubai.ae/en/living/driving-transportation/road-toll-in-d
 ## Route-specific cost comparison (manual charged passage count)
 
 Each Mapbox route card accepts its **number of chargeable Salik passages**, after official pair exemptions, to calculate **fuel + VAT-inclusive Salik** for that one provider response. All routes need explicit counts before a "cheapest total" is announced; unknown is never treated as zero. Toll counts are deliberately reset after every route refresh because alternatives and geometry can change. The automatic route planner still considers time and fuel, not unverified toll counts. Parking and other vehicle costs remain excluded. This is intentionally not automatic gate detection.
+
+
+## Live Mapbox diagnostic (user initiated; public landmarks only)
+
+A manual **فحص اتصال Mapbox والمسارات** button calls the exact Directions driving-traffic endpoint using only Dubai Mall and Ajman City Centre (public POIs; coordinates documented by public data), not the user's saved locations. It reports authorization (401/403), route count and whether non-unknown congestion annotations were actually returned. This costs one route request, consumes the local request budget and times out at 14s. No test pass is claimed unless the user's own Mapbox token actually returns a valid response; local unit tests use mock payloads. Mapbox API usage and real-world travel times must still be checked separately.
