@@ -1,4 +1,4 @@
-# My Commute Smart Navigator — Personal Commute Assistant
+# My Commute Smart Navigator — Web-first Commute Assistant
 
 Arabic-first, local-first journey planning and traffic-aware route comparison for UAE commuting. **This project is an experimental tool, not a certified Waze replacement or safe primary turn-by-turn navigator.** Use Waze/Google Maps for in-car navigation until the native application is validated.
 
@@ -77,3 +77,21 @@ See [`docs/RELEASE-GATES.md`](docs/RELEASE-GATES.md) for reproducible field acce
 - Native: the Mapbox maneuver view and SDK-managed voice guidance are now connected to route progress; home/work bookmarks are stored locally; explicit Stop clears routes and stops the GPS session. These are source-level changes, **not evidence of successful Android build or road readiness**.
 - A separate manually triggered GitHub Actions workflow `android-build.yml` can compile and retain a short-lived APK if the repository owner configures `MAPBOX_DOWNLOADS_TOKEN` and `MAPBOX_PUBLIC_TOKEN` as Actions secrets. Never send secret tokens in chat or commit them.
 - Web unit tests are run in CI. Android compilation, notification behavior, voice language, background operation, map matching and safety require SDK credentials plus a real device.
+
+
+## Web-only priority (30 October 2026)
+
+Current development targets the **website/PWA**, not an Android or iOS app. The old experimental `android/` folder is retained as inactive historical code; it is not part of website deployment, testing or the committed web-first feature definition.
+
+### Preview a trip before leaving (no GPS)
+
+1. Save **home** and **work** positions once; Mapbox needs an allowed public token (`pk...`).
+2. Select destination and choose the **saved departure location** in the new preview panel.
+3. Choose whether to **request toll avoidance**, then click **Compare routes**.
+4. Inspect ETA, estimated fuel, alternatives and colored traffic segments, if returned. A route may still contain tolls; the exclusion is not a guarantee and pricing is **not** automatically computed.
+5. As long as the website stays visible, the comparison automatically refreshes about every 90 seconds. Manual refresh is also available.
+6. Start GPS only if you want the website's experimental live tracking and guidance. A locked/backgrounded browser cannot promise continuous GPS or speech; use Waze for dependable driving guidance.
+
+### New tests
+
+`node --test tests/*.test.mjs` now includes the traffic/endpoint helper tests. Live provider calls, real traffic coverage and road accuracy require a Mapbox key and device verification.
