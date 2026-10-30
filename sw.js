@@ -1,5 +1,5 @@
 const CACHE='mycommute-smartnav-shell-v3';
-const SHELL=['./','./index.html','./style.css','./app.mjs','./nav-core.mjs','./decision-core.mjs','./trip-store.mjs','./salik-core.mjs','./departure-core.mjs','./web-routing.mjs','./web-experience.mjs','./drive-mode.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png'];
+const SHELL=['./','./index.html','./style.css','./app.mjs','./nav-core.mjs','./decision-core.mjs','./trip-store.mjs','./salik-core.mjs','./departure-core.mjs','./web-routing.mjs','./web-experience.mjs','./drive-mode.mjs','./departure-planner.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(names=>Promise.all(names.filter(n=>n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

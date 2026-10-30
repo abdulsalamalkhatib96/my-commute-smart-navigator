@@ -100,3 +100,10 @@ Current development targets the **website/PWA**, not an Android or iOS app. The 
 ## Full-screen browser map mode
 
 Use **وضع خريطة القيادة** to display a full-screen map and accessible exit, re-center and Waze buttons. With active GPS, the map can follow fresh fixes on the foreground page; manual drag pauses recentering for 45 seconds. The view is a browser convenience, not an approved primary navigator: GPS/speech may stop when the screen is locked, and route projection cannot guarantee correct lanes on stacked roads. Keep attention on the road and use Waze for dependable maneuvers.
+
+
+## Forecast departure windows (web)
+
+Mapbox Directions driving-traffic supports `depart_at` time-dependent routing. The site compares departure now, +15, +30, +60 minutes using four user-initiated predictions. It displays **driving duration** and **clock-time arrival** separately. These are provider predictions based on historic/live-mixed traffic, not guaranteed future real-time conditions. Only saved-place origin/destination are supported, no background polling, and a two-minute request cooldown protects quota. Provider errors may yield partial comparisons. The feature needs a Mapbox public token and internet connection.
+
+Official reference: https://docs.mapbox.com/api/navigation/directions/

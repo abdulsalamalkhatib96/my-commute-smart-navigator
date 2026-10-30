@@ -6,6 +6,7 @@ import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
 import {cameraForFix,canFollow} from './drive-mode.mjs';
+import {DEPARTURE_OFFSETS,predictedRouteUrl,departureOptions,departureComparison} from './departure-planner.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -17,7 +18,8 @@ const state = {
   token: '', hasCentered: false, destination: 'home', work: null, workMarker: null,
   settings: {...DEFAULT_SETTINGS}, pendingRoute: null, trip: null, lastGpsFix: null,
   lastRouteChange: 0, lastDecision: '—', savePinFor: 'home', manualRouteUntil: 0, previewActive:false, previewFrom:'work', avoidTolls:false, lastGoodAt:0,
-  driveMode:false,lastCameraAt:0,followPausedUntil:0
+  driveMode:false,lastCameraAt:0,followPausedUntil:0,
+  departureForecastAt:0,departureForecastController:null
 };
 const RECHECK_MS = 90_000;
 const MIN_RECHECK_MS = 35_000;
@@ -67,10 +69,74 @@ function setPlace(which, coordinates, name=which==='home'?'البيت':'العم
     state.map.flyTo({center:place.coordinates,zoom:13});
   }
   feedback(`تم حفظ ${which==='home'?'البيت':'العمل'}.`);
+  clearDepartureForecast();
   if (state.watchId !== null && state.destination===which) {state.lastRequestAt=0;requestRoutes(true);}
   else if(state.previewActive&&(state.destination===which||state.previewFrom===which)){state.lastRequestAt=0;state.pendingRoute=null;state.routes=[];requestRoutes(true);}
 }
 function selectedDestination() {return state[state.destination];}
+function clearDepartureForecast(){
+  state.departureForecastController?.abort();
+  state.departureForecastController=null;
+  $('departure-results').textContent='اضغط للمقارنة وفق توقّعات Mapbox التاريخية والمرور المتاح.';
+}
+async function predictDeparture(){
+  if(state.watchId!==null){feedback('أوقف تتبع GPS قبل مقارنة مواعيد المغادرة.',true);return;}
+  const start=previewOrigin($('preview-origin').value,state.home,state.work),end=selectedDestination()?.coordinates;
+  if(!state.token||!start||!end){feedback('شغّل Mapbox واحفظ العمل والبيت أولًا.',true);return;}
+  if(navigator.onLine===false){feedback('تحتاج اتصال إنترنت للتوقعات.',true);return;}
+  if(Date.now()-state.departureForecastAt<120000){feedback('يمكن إعادة طلب توقعات المغادرة بعد دقيقتين لتقليل الاستهلاك.',true);return;}
+  state.departureForecastAt=Date.now();
+  state.departureForecastController?.abort();
+  const controller=new AbortController();
+  state.departureForecastController=controller;
+  const results=$('departure-results');
+  const button=$('departure-check');
+  button.disabled=true;results.textContent='يتم حساب توقعات المغادرة من Mapbox…';
+  const base=new Date();
+  const requests=DEPARTURE_OFFSETS.map(async offsetMinutes=>{
+    const departAt=new Date(base.getTime()+offsetMinutes*60000);
+    const url=predictedRouteUrl(start,end,state.token,departAt,{avoidTolls:$('avoid-tolls').checked});
+    const response=await fetch(url,{signal:controller.signal});
+    const payload=await response.json();
+    if(!response.ok||payload.code!=='Ok')throw Error(payload.message||'فشل أحد التوقعات');
+    const durationSeconds=payload.routes?.[0]?.duration;
+    if(!Number.isFinite(durationSeconds)||durationSeconds<=0)throw Error('لم يرد تقدير صالح');
+    return {offsetMinutes,durationSeconds};
+  });
+  try{
+    const settled=await Promise.allSettled(requests);
+    if(state.departureForecastController!==controller)return;
+    const successful=settled.filter(v=>v.status==='fulfilled').map(v=>v.value);
+    const options=departureOptions(successful,base),summary=departureComparison(options);
+    results.replaceChildren();
+    if(!summary){results.textContent='لم تتوفر توقعات للمغادرة. تأكد من صلاحية الخدمة والاتصال.';return;}
+    const notice=document.createElement('p');
+    notice.textContent='هذه توقعات تاريخية/مرورية وليست قياسات حية لساعة مستقبلية. أوقات الوصول بتوقيت دبي.';
+    results.appendChild(notice);
+    for(const option of options){
+      const row=document.createElement('div');row.className='departure-row';
+      const when=document.createElement('b');
+      when.textContent=option.offsetMinutes===0?'الآن':'بعد '+option.offsetMinutes+' دقيقة';
+      const duration=document.createElement('span');duration.textContent='قيادة '+formatMinutes(option.durationSeconds);
+      const arrival=document.createElement('span');arrival.textContent='وصول '+new Intl.DateTimeFormat('ar-AE',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit'}).format(option.arriveAt);
+      row.append(when,duration,arrival);
+      if(option===summary.fastest)row.classList.add('fastest');
+      results.appendChild(row);
+    }
+    const explanation=document.createElement('p');
+    explanation.textContent='أقل وقت قيادة: '+(summary.fastest.offsetMinutes===0?'الآن':'بعد '+summary.fastest.offsetMinutes+' دقيقة')+
+      '؛ الوصول الأبكر: '+(summary.earliestArrival.offsetMinutes===0?'الآن':'بعد '+summary.earliestArrival.offsetMinutes+' دقيقة')+
+      '. التوفير في القيادة لا يعني الوصول مبكرًا.';
+    results.appendChild(explanation);
+    if(settled.some(x=>x.status==='rejected')){
+      const warning=document.createElement('p');warning.textContent='بعض التوقعات فشلت؛ المقارنة جزئية.';results.appendChild(warning);
+    }
+  }catch(error){
+    if(error.name!=='AbortError')results.textContent='تعذرت المقارنة: '+error.message;
+  }finally{
+    if(state.departureForecastController===controller){state.departureForecastController=null;button.disabled=false;}
+  }
+}
 function downloadFile(contents, filename, mime) {
   const url=URL.createObjectURL(new Blob([contents],{type:mime}));
   const anchor=document.createElement('a');anchor.href=url;anchor.download=filename;
@@ -484,8 +550,9 @@ function wireEvents() {
     $('preview-origin').value=destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
     renderHistory();previewRoutes();
   }
-  $('quick-home').addEventListener('click',()=>fastPreview('home'));
-  $('quick-work').addEventListener('click',()=>fastPreview('work'));
+  $('departure-check').addEventListener('click',predictDeparture);
+  $('quick-home').addEventListener('click',()=>{clearDepartureForecast();fastPreview('home');});
+  $('quick-work').addEventListener('click',()=>{clearDepartureForecast();fastPreview('work');});
   $('export-profile').addEventListener('click',()=>{
     try{downloadFile(exportProfile({home:state.home,work:state.work,settings:state.settings,avoidTolls:state.avoidTolls,destination:state.destination}),'my-commute-settings.json','application/json');}
     catch(e){feedback('تعذر تصدير الإعدادات: '+e.message,true);}
@@ -522,11 +589,12 @@ function wireEvents() {
   window.setInterval(showConnectionState,30000);
   $('preview-route').addEventListener('click',previewRoutes);
   $('refresh-route').addEventListener('click',()=>{if(state.watchId!==null||state.previewActive)requestRoutes(true);else feedback('ابدأ معاينة أو رحلة أولًا.');});
-  $('preview-origin').addEventListener('change',()=>{if(state.previewActive)stopPreview();state.previewFrom=$('preview-origin').value;});
-  $('avoid-tolls').addEventListener('change',()=>{state.avoidTolls=$('avoid-tolls').checked;safeStorageSet('avoidTolls',String(state.avoidTolls));if(state.watchId!==null||state.previewActive){state.lastRequestAt=0;state.routes=[];state.pendingRoute=null;requestRoutes(true);}});
+  $('preview-origin').addEventListener('change',()=>{clearDepartureForecast();if(state.previewActive)stopPreview();state.previewFrom=$('preview-origin').value;});
+  $('avoid-tolls').addEventListener('change',()=>{clearDepartureForecast();state.avoidTolls=$('avoid-tolls').checked;safeStorageSet('avoidTolls',String(state.avoidTolls));if(state.watchId!==null||state.previewActive){state.lastRequestAt=0;state.routes=[];state.pendingRoute=null;requestRoutes(true);}});
   $('salik-gates').addEventListener('input',updateManualToll);
   $('salik-ramadan').addEventListener('change',updateManualToll);
   $('destination').addEventListener('change',()=>{
+    clearDepartureForecast();
     if(state.watchId!==null)stopNavigation();
     if(state.previewActive)stopPreview();
     state.destination=$('destination').value;
