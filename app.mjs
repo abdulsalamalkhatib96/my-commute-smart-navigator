@@ -11,6 +11,7 @@ import {validGpsTimestamp,routeCooldownMs} from './gps-policy.mjs';
 import {DEFAULT_REMINDERS,parseReminderSettings,dueReminders} from './reminder-core.mjs';
 import {encryptPrivateBackup,decryptPrivateBackup} from './secure-backup.mjs';
 import {validTrip} from './trip-store.mjs';
+import {LIMITS,normalizeBudget,reserveBudget} from './api-budget.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -78,6 +79,24 @@ function setPlace(which, coordinates, name=which==='home'?'البيت':'العم
   else if(state.previewActive&&(state.destination===which||state.previewFrom===which)){state.lastRequestAt=0;state.pendingRoute=null;state.routes=[];requestRoutes(true);}
 }
 function selectedDestination() {return state[state.destination];}
+let localApiLedger=null;
+function readApiLedger(){
+  try{return JSON.parse(safeStorageGet('api-budget')||'null')||localApiLedger;}
+  catch{return localApiLedger;}
+}
+function showApiBudget(){
+  const ledger=normalizeBudget(readApiLedger());
+  $('api-budget').textContent='طلبات هذا المتصفح اليوم (بتوقيت دبي): مسارات '+ledger.counts.routing+'/'+LIMITS.routing+
+   ' · بحث '+ledger.counts.search+'/'+LIMITS.search+' · توقعات '+ledger.counts.forecast+'/'+LIMITS.forecast+'.';
+}
+function spendApiRequest(kind,amount=1){
+  const result=reserveBudget(readApiLedger(),kind,amount);
+  localApiLedger=result.ledger;
+  if(!result.allowed)throw Error('بلغت حد طلبات '+kind+' اليوم على هذا المتصفح. يتجدد تلقائيًا في منتصف الليل بتوقيت دبي.');
+  safeStorageSet('api-budget',JSON.stringify(localApiLedger));
+  showApiBudget();
+}
+
 let reminderSettings={...DEFAULT_REMINDERS};
 let firedReminders=[];
 function readReminders(){
@@ -185,6 +204,7 @@ async function predictDeparture(){
   if(!state.token||!start||!end){feedback('شغّل Mapbox واحفظ العمل والبيت أولًا.',true);return;}
   if(navigator.onLine===false){feedback('تحتاج اتصال إنترنت للتوقعات.',true);return;}
   if(Date.now()-state.departureForecastAt<120000){feedback('يمكن إعادة طلب توقعات المغادرة بعد دقيقتين لتقليل الاستهلاك.',true);return;}
+  try{spendApiRequest('forecast',DEPARTURE_OFFSETS.length);}catch(error){feedback(error.message,true);return;}
   state.departureForecastAt=Date.now();
   state.departureForecastController?.abort();
   const controller=new AbortController();
@@ -504,6 +524,7 @@ async function requestRoutes(force=false,confirmedOffRoute=false) {
   if(driving&&haversine(origin,destination.coordinates)<100){stopNavigation(true);return;}
   if(!validRouteEndpoints(origin,destination.coordinates)){feedback('حدد انطلاقًا ووجهة مختلفتين.',true);return;}
   if(Date.now()-state.lastRequestAt<routeCooldownMs(confirmedOffRoute)){if(force&&!confirmedOffRoute)feedback('تم التحديث مؤخرًا؛ انتظر قليلًا قبل إعادة الطلب.');return;}
+  try{spendApiRequest('routing');}catch(error){feedback(error.message,true);return;}
   state.lastRequestAt=Date.now();
   state.controller?.abort();
   state.controller=new AbortController();
@@ -631,6 +652,7 @@ async function searchPlace() {
   if (!state.token){feedback('أدخل Mapbox token أولًا.',true);return;}
   if (search.length<3){feedback('اكتب 3 أحرف على الأقل للبحث عن الوجهة.',true);return;}
   const params=new URLSearchParams({q:search,language:'ar',country:'ae',limit:'5',access_token:state.token});
+  try{spendApiRequest('search');}catch(error){feedback(error.message,true);return;}
   $('results').textContent='جاري البحث…';
   try {
     const response=await fetch(`https://api.mapbox.com/search/geocode/v6/forward?${params}`);
@@ -769,7 +791,7 @@ wireEvents();
 state.home=readPlace('home');state.work=readPlace('work');state.settings=readSettings();
 if(state.home) $('home-details').textContent=`${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
 if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoordinate(state.work.coordinates)}`;
-updateSettingsUI();renderHistory();updateManualToll();showConnectionState();
+updateSettingsUI();renderHistory();updateManualToll();showConnectionState();showApiBudget();
 $('preview-origin').value='work';state.previewFrom='work';
 state.avoidTolls=safeStorageGet('avoidTolls')==='true';$('avoid-tolls').checked=state.avoidTolls;
 reminderSettings=readReminders();$('reminder-enabled').checked=reminderSettings.enabled;

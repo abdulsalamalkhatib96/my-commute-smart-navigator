@@ -132,3 +132,8 @@ Use the backup panel to export/import saved places, nonsecret route settings and
 ## Salik route evidence and conditional VAT scenario
 
 Mapbox v5 Directions returns toll alerts and violated toll-avoidance notices on **route legs** (`route.legs[].notifications`); route comparisons now identify an alerted toll segment when one is reported. A missing alert is **not proof** that a route is free of Salik, and Mapbox does not provide a verified exact count of Dubai toll gates in those notifications. The manual toll calculator supports an optional anticipated Dubai crossing clock time (default now). As the UAE government's 2026 guidance states that 5% VAT applies to toll transactions from June 1, a clearly labeled **if additional** tax scenario is shown separately. The app does not assert whether the official posted toll rate already includes VAT; verify the authoritative invoice. Sources: https://docs.mapbox.com/api/navigation/directions/ and https://u.ae/information-and-services/transportation/roadways
+
+
+## Browser-side Mapbox usage safeguards
+
+The website now limits its own requests by Dubai-local day: 240 standard routing calculations, 30 geocoding searches, and 20 future forecast queries (the four departure windows consume four credits). This budget is **browser-local, can be reset by removing browser storage, and does not prevent other clients from consuming Mapbox billable requests**. It excludes map tile/map-load consumption. Restrict public tokens, configure Mapbox account billing controls and check actual usage separately; do not consider this a hard provider quota.
