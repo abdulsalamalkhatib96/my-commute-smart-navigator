@@ -90,11 +90,29 @@
       <section class="panel advanced-panel" id="advanced-tolls">
         <h2>حساب سالك اليدوي — غير مربوط بالمسار</h2>
         <p class="help">أدخل عدد بوابات سالك التي تعرف أنك ستعبرها. الحساب حسب التوقيت الحالي في دبي، ولا يكتشف البوابات أو يستبدل فاتورة سالك الرسمية.</p>
-        <label>عدد البوابات المتوقعة <input id="salik-gates" type="number" min="0" max="20" step="1" placeholder="غير معروف"></label>
+        <label>عدد العبورات المحاسَب عليها بعد الإعفاءات <input id="salik-gates" type="number" min="0" max="20" step="1" placeholder="غير معروف"></label>
         <label>وقت عبور البوابات المتوقع (بتوقيت دبي، اختياري) <input id="salik-crossing-time" type="datetime-local"></label>
         <label class="switch"><input id="salik-ramadan" type="checkbox"> فترة رمضان (السعر يحتاج تحققًا من الجدول الرسمي)</label>
         <p>تقدير سالك: <strong id="salik-estimate">غير معروف</strong></p><p id="salik-vat" class="help">قد تنطبق ضريبة VAT؛ تحقق من الفاتورة الرسمية.</p>
-        <p class="help">لا تدخل هذه القيمة في ترتيب الطرق لأن عدد البوابات لكل مسار غير متحقق.</p>
+        <p class="help">القيم تشمل VAT اعتبارًا من 1 يونيو 2026. لا تدخل هذه القيمة في ترتيب الطرق لأن عدد بوابات كل مسار غير متحقق.</p>
+        <section class="salik-ledger" aria-label="سجل العبور المحاسَب">
+          <h3>احسب عبور بوابات محددة وإعفاءات الساعة</h3>
+          <p class="help">أدخل البوابات التي تعرف أنك ستمر بها. الإعفاء يطبق فقط على شمال/جنوب الممزر أو الصفا عند العبور باتجاه واحد خلال ساعة. هذا ليس اكتشافًا آليًا للبوابات من الطريق.</p>
+          <div class="settinggrid">
+            <label>البوابة<select id="salik-event-gate">
+              <option value="mamzar-n">الممزر الشمالية</option><option value="mamzar-s">الممزر الجنوبية</option>
+              <option value="safa-n">الصفا الشمالية</option><option value="safa-s">الصفا الجنوبية</option>
+              <option value="airport">نفق المطار</option><option value="maktoum">جسر آل مكتوم</option>
+              <option value="garhoud">جسر القرهود</option><option value="business-bay">معبر الخليج التجاري</option>
+              <option value="barsha">البرشاء</option><option value="jebel-ali">جبل علي</option>
+            </select></label>
+            <label>اتجاه العبور<select id="salik-event-direction"><option value="north">باتجاه الشمال</option><option value="south">باتجاه الجنوب</option></select></label>
+            <label>وقت عبور البوابة — دبي<input type="datetime-local" id="salik-event-time"></label>
+          </div>
+          <div class="horizontal wrap-buttons"><button id="salik-event-add" type="button" class="primary">إضافة عبور</button><button id="salik-event-clear" type="button" class="secondary danger">مسح السجل</button></div>
+          <div id="salik-event-list" class="salik-event-list"></div>
+          <p>مجموع العبور المدخل: <strong id="salik-event-total">—</strong></p>
+        </section>
       </section>
       <section class="panel" aria-label="تذكيرات المغادرة">
         <h2>تذكيرات الذهاب والعودة</h2>

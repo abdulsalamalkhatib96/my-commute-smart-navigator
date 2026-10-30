@@ -159,3 +159,10 @@ The full-screen browser drive UI offers a user-clicked **Keep screen awake** con
 ## Browser smoke in CI
 
 The GitHub Tests workflow runs a no-token, localhost headless Chrome bootstrap smoke after JavaScript syntax and unit tests. It verifies the actual ES-module graph initializes and core controls are present, without making live Mapbox calls or collecting positions. This is **not** a substitute for real traffic/GPS testing or full device accessibility evaluation.
+
+
+## Salik 2026 cost and timed pair exceptions
+
+Effective June 1, 2026 the app calculates 5% VAT on Dubai Salik base toll rates. Standard peak base AED 6 becomes AED 6.30 including VAT, and base AED 4 becomes AED 4.20. Before June 1, 2026 no VAT is added. The user-entered gate ledger supports ten named gates with time of crossing and travel direction, and the RTA one-hour same-direction pair waiver for Al Safa North/South and Al Mamzar North/South. It does **not** automatically infer gates from the Mapbox geometry, handle multi-direction ramps or know special Ramadan dates. Unknown or Ramadan inputs are explicitly not priced. Verify charges against the official Salik statement, especially when multiple passes and exemptions overlap.
+
+References: https://www.dubai.ae/en/living/driving-transportation/road-toll-in-dubai-salik ; https://rta.ae/wps/portal/rta/ae/home/news-and-media/all-news/NewsDetails/adding-salik-toll-gate-on-business-bay-crossing-operations-to-start-in-november-2024 ; https://www.thenationalnews.com/news/uae/2026/06/01/salik-toll-charge-dubai-parking-fee/

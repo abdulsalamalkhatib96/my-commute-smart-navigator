@@ -122,3 +122,9 @@ footer a{color:#057c70;font-weight:700}
 .drive-mode #wake-toggle[aria-pressed=true]{background:#086a54;color:#fff}
 .drive-mode #wake-status{line-height:1.4;font-size:.76rem;color:#435f72;margin:0}
 .drive-mode .drive-actions button{font-size:.83rem;min-width:110px}
+
+.salik-ledger{background:#f5faf9;border:1px solid #d5e9e2;border-radius:14px;padding:15px;margin-top:12px}
+.salik-ledger h3{margin-top:0}
+.salik-event-list{margin:12px 0;display:grid;gap:7px}
+.salik-event-row{padding:9px 11px;background:#fff;border:1px solid #d8e6eb;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap}
+.salik-event-row button{min-height:37px}

@@ -2,6 +2,7 @@ import {haversine, isValidCoordinate, progressOnSteps, laneSummary, formatMinute
 import {DEFAULT_SETTINGS, normalizeSettings, fuelCost, chooseRoute, tripStats, departureBuckets, formatAED} from './decision-core.mjs';
 import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} from './trip-store.mjs';
 import {estimateSalik,salikVatScenario} from './salik-core.mjs';
+import {SALIK_GATES,priceCrossings,priceChargedCount} from './salik-ledger.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation,routeTollEvidence} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
@@ -274,16 +275,46 @@ function updateSettingsUI() {
   $('fuel-price').value=state.settings.fuelPriceAED;
   $('time-value').value=state.settings.valueOfTimeAEDPerHour;
 }
-function updateManualToll() {
-  const raw=$('salik-gates').value;
-  const gates=Number(raw);
-  const crossing=$('salik-crossing-time').value.trim();
-  const date=crossing?new Date(crossing+':00+04:00'):new Date();
-  const estimate=raw.trim()===''?null:salikVatScenario(gates,date,{ramadan:$('salik-ramadan').checked});
-  $('salik-estimate').textContent=estimate===null?'غير معروف / يحتاج مراجعة':`${estimate.aed.toFixed(2)} د.إ رسوم أساسية (${estimate.crossings} × ${estimate.rate})`;
-  $('salik-vat').textContent=estimate===null?'رسوم VAT غير معروفة.':estimate.vatApplicable?
-    `في حال إضافة VAT بنسبة 5% خارج التعرفة: +${estimate.vatIfAdditional.toFixed(2)} د.إ، والمجموع ${estimate.totalIfAdditional.toFixed(2)} د.إ. تحقق من الفاتورة الرسمية لمعرفة شمول التعرفة للضريبة.`:
-    'لم تُطبق فرضية VAT على هذا التاريخ.';
+let salikEventLog=[];
+function readSalikEvents(){
+ try{const raw=JSON.parse(safeStorageGet('salik-events')||'[]');return Array.isArray(raw)&&raw.length<=40&&priceCrossings(raw)!==null?raw:[];}catch{return [];}
+}
+function renderSalikEventLog(){
+ const target=$('salik-event-list');target.replaceChildren();
+ const summary=priceCrossings(salikEventLog,{ramadan:$('salik-ramadan').checked});
+ if(!summary){target.textContent='تعذر حساب هذا السجل؛ راجع معلومات العبور ورمضان.';return;}
+ for(let index=0;index<summary.crossings.length;index++){
+   const row=summary.crossings[index],line=document.createElement('div');line.className='salik-event-row';
+   const text=document.createElement('span');
+   text.textContent=SALIK_GATES[row.gate]+' · '+new Intl.DateTimeFormat('ar-AE',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit'}).format(new Date(row.at))+
+     ' · '+(row.discount?'إعفاء الزوج خلال ساعة':row.totalAED.toFixed(2)+' د.إ شامل الضريبة');
+   const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='حذف';
+   remove.setAttribute('aria-label','حذف عبور '+SALIK_GATES[row.gate]);
+   remove.addEventListener('click',()=>{salikEventLog.splice(index,1);safeStorageSet('salik-events',JSON.stringify(salikEventLog));renderSalikEventLog();});
+   line.append(text,remove);target.appendChild(line);
+ }
+ $('salik-event-total').textContent=summary.totalAED.toFixed(2)+' د.إ (رسم أساسي '+summary.baseAED.toFixed(2)+' + ضريبة '+summary.vatAED.toFixed(2)+
+   '؛ إعفاءات الأزواج '+summary.discounted+').';
+}
+function updateManualToll(){
+ const raw=$('salik-gates').value;
+ const gates=Number(raw);
+ const crossing=$('salik-crossing-time').value.trim();
+ const date=crossing?new Date(crossing+':00+04:00'):new Date();
+ const estimate=raw.trim()===''?null:priceChargedCount(gates,date,{ramadan:$('salik-ramadan').checked});
+ $('salik-estimate').textContent=estimate===null?'غير معروف / يحتاج مراجعة':estimate.totalAED.toFixed(2)+' د.إ شامل الضريبة ('+estimate.count+' عبور محاسَب)';
+ $('salik-vat').textContent=estimate===null?'أدخل عدد العبور المحاسَب الصحيح؛ رسوم رمضان تتطلب تحققًا.':
+  'الرسم الأساسي '+estimate.baseAED.toFixed(2)+' د.إ + ضريبة '+estimate.vatAED.toFixed(2)+' د.إ. استخدم السجل أدناه لحساب إعفاء الأزواج.';
+ renderSalikEventLog();
+}
+function addSalikEvent(){
+ if(salikEventLog.length>=40){feedback('حد السجل 40 عبورًا لتجنب البيانات غير المنضبطة.',true);return;}
+ const local=$('salik-event-time').value;
+ if(!/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d$/.test(local)){feedback('أدخل تاريخ ووقت العبور بتوقيت دبي.',true);return;}
+ const entry={gate:$('salik-event-gate').value,direction:$('salik-event-direction').value,at:local+':00+04:00'};
+ const next=[...salikEventLog,entry];
+ if(!priceCrossings(next)){feedback('بيانات العبور غير صالحة.',true);return;}
+ salikEventLog=next;safeStorageSet('salik-events',JSON.stringify(salikEventLog));renderSalikEventLog();
 }
 function saveSettings() {
   state.settings=normalizeSettings({mode:$('mode').value,
@@ -786,6 +817,8 @@ function wireEvents() {
   $('preview-origin').addEventListener('change',()=>{clearDepartureForecast();if(state.previewActive)stopPreview();state.previewFrom=$('preview-origin').value;});
   $('avoid-tolls').addEventListener('change',()=>{clearDepartureForecast();state.avoidTolls=$('avoid-tolls').checked;safeStorageSet('avoidTolls',String(state.avoidTolls));if(state.watchId!==null||state.previewActive){state.lastRequestAt=0;state.routes=[];state.pendingRoute=null;requestRoutes(true);}});
   $('salik-gates').addEventListener('input',updateManualToll);
+  $('salik-event-add').addEventListener('click',addSalikEvent);
+  $('salik-event-clear').addEventListener('click',()=>{if(!confirm('حذف جميع عبورات سالك المسجلة؟'))return;salikEventLog=[];safeStorageSet('salik-events','[]');renderSalikEventLog();});
   $('salik-crossing-time').addEventListener('change',updateManualToll);
   $('salik-ramadan').addEventListener('change',updateManualToll);
   $('destination').addEventListener('change',()=>{
@@ -846,7 +879,7 @@ wireEvents();
 state.home=readPlace('home');state.work=readPlace('work');state.settings=readSettings();
 if(state.home) $('home-details').textContent=`${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
 if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoordinate(state.work.coordinates)}`;
-updateSettingsUI();renderHistory();updateManualToll();showConnectionState();showApiBudget();
+updateSettingsUI();renderHistory();salikEventLog=readSalikEvents();updateManualToll();showConnectionState();showApiBudget();
 $('preview-origin').value='work';state.previewFrom='work';
 state.avoidTolls=safeStorageGet('avoidTolls')==='true';$('avoid-tolls').checked=state.avoidTolls;
 reminderSettings=readReminders();$('reminder-enabled').checked=reminderSettings.enabled;
