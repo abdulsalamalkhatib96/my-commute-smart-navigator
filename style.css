@@ -133,3 +133,7 @@ footer a{color:#057c70;font-weight:700}
 .route-cost-entry label{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.85rem;color:#314f5d}
 .route-cost-entry input{width:100px;min-width:78px;border:1px solid #c2d7db;border-radius:8px;padding:7px}
 .route-cost-entry small{color:#266253;font-weight:650}
+
+.provider-diagnostics{margin:12px 0;padding:12px;border:1px solid #cfe1e8;background:#f1f8fa;border-radius:12px}
+.provider-diagnostics button{width:100%;min-height:48px}
+.provider-diagnostics p{margin:8px 0 0;line-height:1.65}
