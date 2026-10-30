@@ -52,7 +52,8 @@ All items start **unverified** until supported by evidence. A green unit-test pi
 - [x] Mapbox route-leg toll warning detection and conditional VAT scenario with selectable crossing time.
 - [x] Per-route user-specified chargeable Salik counts, VAT-inclusive fuel+toll comparison with unknowns preserved and reset on route refresh.
 - [ ] Verified route-specific automatic Salik gate detection and Ramadan/exception pricing (requires direction-specific gate source)
-- [ ] Calibrated ETA versus Waze over 20–30 trips with different departure windows
+- [x] Separate completed vs interrupted trips and median/MAD personal ETA historical corrections from 5+ verified trips.
+- [ ] On-road calibrated ETA versus actual driving and Waze over 20–30 journeys with different departure windows
 - [x] Historical weekday/hour departure comparison with sample count and low/medium confidence labels (not a traffic forecast)
 - [ ] Calibrated forward-looking departure predictions with uncertainty
 - [x] AES-256-GCM password-encrypted local cross-device backup export/import (manual file transfer).

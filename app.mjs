@@ -5,6 +5,7 @@ import {estimateSalik,salikVatScenario} from './salik-core.mjs';
 import {SALIK_GATES,priceCrossings,priceChargedCount} from './salik-ledger.mjs';
 import {compareTotalRouteCosts} from './route-cost-core.mjs';
 import {TEST_ROUTE,mapboxHealthReport} from './provider-health.mjs';
+import {etaCalibration,adjustedEtaSeconds} from './eta-quality.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation,routeTollEvidence} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
@@ -333,6 +334,7 @@ function renderHistory() {
   $('median-duration').textContent=stats.medianSeconds===null?'—':formatMinutes(stats.medianSeconds);
   $('eta-error').textContent=stats.medianEtaErrorSeconds===null?'—':formatMinutes(stats.medianEtaErrorSeconds);
   $('historical').textContent=formatHistoricalAdvice(historicalDepartureAdvice(trips,state.destination));
+  renderEtaCalibration();
 }
 function finishTrip(arrived=false) {
   if(!state.trip)return;
@@ -341,7 +343,7 @@ function finishTrip(arrived=false) {
   if(seconds<120 || !Number.isFinite(seconds) || t.distanceMeters<200 || t.initialEtaSeconds===null) return;
   saveTrip({id:t.id,destination:t.destination,startAt:t.startAt,endAt:new Date().toISOString(),
     durationSeconds:Math.min(seconds,86399),distanceMeters:Math.min(t.distanceMeters,1499999),
-    initialEtaSeconds:t.initialEtaSeconds},state.settings.maxHistory);
+    initialEtaSeconds:t.initialEtaSeconds,completed:Boolean(arrived)},state.settings.maxHistory);
   renderHistory();
   feedback(arrived?'تم حفظ الرحلة عند الوصول.':'تم حفظ الرحلة عند الإيقاف.');
 }
@@ -518,6 +520,21 @@ function renderRouteFinancialTotals(){
    'الأقل في التكلفة المعروفة: البديل '+(report.cheapest.index+1)+' بمبلغ '+report.cheapest.totalAED.toFixed(2)+
    ' د.إ (وقود + سالك، دون مواقف أو تكاليف أخرى).';
 }
+function renderEtaCalibration(){
+ const report=etaCalibration(readTrips(),state.destination);
+ const output=$('eta-calibration');
+ if(report.status!=='observed'){
+   output.textContent='تحسين التوقعات الشخصي: '+report.samples+'/5 رحلات مكتملة موثقة للوجهة الحالية. لا يوجد تصحيح شخصي حتى الآن.';
+   return;
+ }
+ const bias=Math.round(report.biasSeconds/60);
+ const original=state.routes[state.selected]?.duration;
+ const adjusted=adjustedEtaSeconds(original,report);
+ output.textContent='تجاربك المكتملة ('+report.samples+') تشير إلى '+(bias>=0?'تأخير وسطي +':'وصول أسرع بنحو ')+Math.abs(bias)+
+   ' دقيقة مقارنة بتوقع Mapbox. نطاق التفاوت التاريخي التقريبي ±'+report.bufferMinutes+
+   ' دقائق.'+(adjusted!==null?' وقت القيادة المعدّل شخصيًا نحو '+formatMinutes(adjusted)+'.':'')+
+   ' هذه ملاحظة تاريخية وليست توقع ازدحام حيًا.';
+}
 function renderRouteSummary() {
   const selected=state.routes[state.selected];
   $('routes').replaceChildren();
@@ -550,6 +567,7 @@ function renderRouteSummary() {
     costLabel.append(gateInput);entry.append(costLabel,output);$('routes').appendChild(entry);
   }
   renderRouteFinancialTotals();
+  renderEtaCalibration();
   if (!selected) { $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';$('route-insight').textContent='قارن الطرق من الأزرار السريعة.';updateDriveSummary();return; }
   const difference=alternativeSummary(state.routes,state.selected);
   $('route-insight').textContent=!difference?'لا تتوفر مقارنة كافية.':
@@ -728,7 +746,7 @@ function startNavigation() {
   state.lastGpsFix=null;state.lastAcceptedGpsAt=0;
   state.watchId=navigator.geolocation.watchPosition(onPosition,onPositionError,{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
   state.timer=setInterval(()=>{if (!document.hidden && state.watchId!==null) requestRoutes();},RECHECK_MS);
-  $('start').disabled=true;$('stop').disabled=false;
+  $('start').disabled=true;$('stop').disabled=false;$('arrived').disabled=false;
   setStatus('بانتظار إشارة GPS…');
   feedback('تم طلب إذن الموقع. يجب إبقاء الصفحة فعالة لتستمر التحديثات.');
   speaker('بدأت الملاحة الذكية.');
@@ -746,7 +764,7 @@ function stopNavigation(arrived=false) {
   state.announced.clear();state.offRouteCount=0;state.lastAcceptedGpsAt=0;state.fixAt=0;
   if (state.userMarker){state.userMarker.remove();state.userMarker=null;}
   renderRouteSummary();renderRoutesOnMap();updateGuidance();
-  $('start').disabled=false;$('stop').disabled=true;
+  $('start').disabled=false;$('stop').disabled=true;$('arrived').disabled=true;
   $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';
   setStatus('متوقفة');
 }
@@ -909,6 +927,7 @@ function wireEvents() {
   $('save-token').addEventListener('click',()=>initializeMap($('token').value.trim()));
   $('start').addEventListener('click',startNavigation);
   $('stop').addEventListener('click',()=>{stopNavigation();feedback('تم إيقاف GPS وتحديثات الطريق.');});
+  $('arrived').addEventListener('click',()=>{stopNavigation(true);feedback('تم تسجيل انتهاء الرحلة عند الوصول.');});
   $('search-button').addEventListener('click',searchPlace);
   $('place-search').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();searchPlace();}});
   $('pick-on-map').addEventListener('click',()=>{

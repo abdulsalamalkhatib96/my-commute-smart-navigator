@@ -176,3 +176,8 @@ Each Mapbox route card accepts its **number of chargeable Salik passages**, afte
 ## Live Mapbox diagnostic (user initiated; public landmarks only)
 
 A manual **فحص اتصال Mapbox والمسارات** button calls the exact Directions driving-traffic endpoint using only Dubai Mall and Ajman City Centre (public POIs; coordinates documented by public data), not the user's saved locations. It reports authorization (401/403), route count and whether non-unknown congestion annotations were actually returned. This costs one route request, consumes the local request budget and times out at 14s. No test pass is claimed unless the user's own Mapbox token actually returns a valid response; local unit tests use mock payloads. Mapbox API usage and real-world travel times must still be checked separately.
+
+
+## ETA personalization from *completed* journeys
+
+A separate **وصلت — حفظ رحلة مكتملة** button distinguishes confirmed arrival from a cancelled/interrupted GPS session. Newly saved trips get a `completed` boolean. The personal ETA quality panel computes a robust median signed arrival error and MAD dispersion only after at least 5 *completed* trips for the selected destination. Legacy trips without an explicit completion flag and interrupted stops are excluded; personal adjustments are labeled historical and do not replace live Mapbox routing. A small dataset is insufficient for trustworthy forecast confidence, and browser location accuracy can affect results.
