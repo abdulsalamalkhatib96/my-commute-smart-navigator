@@ -73,6 +73,7 @@
         <label class="switch"><input id="voice" type="checkbox" checked> إرشادات صوتية عندما يدعمها المتصفح</label>
         <div class="metrics"><div><span>الوصول المتوقع</span><strong id="eta">—</strong></div><div><span>المسافة المتبقية</span><strong id="distance">—</strong></div><div><span>الوقود المتوقع*</span><strong id="fuel-estimate">—</strong></div><div><span>آخر تحديث</span><strong id="last-update">—</strong></div></div><p class="help">* التقدير للوقود فقط؛ لا يشمل سالك والمواقف ولا يمثل تكلفة الرحلة الكاملة.</p>
         <p id="route-insight" class="traffic-details">قارن الطرق من الأزرار السريعة.</p>
+        <p id="route-cost-insight" class="traffic-details" aria-live="polite">لتقدير تكلفة الوقود وسالك لكل بديل، أدخل عدد عبورات سالك المحاسَب عليها يدويًا بعد ظهور المسارات.</p>
         <div id="routes" class="routes" aria-live="polite"><p class="help">ستظهر الطرق بعد تشغيل GPS وتحديد الوجهة.</p></div>
         <button id="open-waze" type="button" class="secondary full-width">افتح وجهتك في Waze للملاحة المعتمدة</button><p class="help">Waze قد يختار مسارًا مختلفًا عن Mapbox؛ لا يعتبر هذا زر متابعة نفس الطريق المختار.</p>
       </section>
@@ -85,7 +86,7 @@
           <label>قيمة ساعة وقتك (درهم)<input type="number" id="time-value" min="0" max="300" step="1"></label>
         </div>
         <button type="button" id="settings-save" class="secondary">حفظ إعدادات القيادة</button>
-        <p class="help">لا يتم إدراج رسوم سالك تلقائيًا لعدم وجود مصدر رسوم على مستوى كل مسار. وضع الأقل تكلفة يعني وقودًا أقل فقط.</p>
+        <p class="help">يعرض الموقع مقارنة إجمالي الوقود + سالك عند إدخال عدد العبورات لكل بديل يدويًا. يظل اختيار المحرك التلقائي مبنيًا على الوقت والوقود دون إدخال رسوم غير معروفة، وتُصفَّر أعداد العبور بعد كل تحديث مسار.</p>
       </section>
       <section class="panel advanced-panel" id="advanced-tolls">
         <h2>حساب سالك اليدوي — غير مربوط بالمسار</h2>
