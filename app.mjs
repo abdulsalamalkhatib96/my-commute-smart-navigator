@@ -1,4 +1,6 @@
 import {haversine, isValidCoordinate, progressOnSteps, laneSummary, formatMinutes, routeIsPlausible} from './nav-core.mjs';
+import {DEFAULT_SETTINGS, normalizeSettings, fuelCost, chooseRoute, tripStats, departureBuckets, formatAED} from './decision-core.mjs';
+import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} from './trip-store.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -7,7 +9,9 @@ const state = {
   accuracy: Infinity, fixAt: 0, heading: null,
   watchId: null, timer: null, requesting: false, controller: null, routes: [], selected: 0,
   lastRequestAt: 0, closest: null, offRouteCount: 0, pinMode: false, announced: new Set(),
-  token: '', hasCentered: false
+  token: '', hasCentered: false, destination: 'home', work: null, workMarker: null,
+  settings: {...DEFAULT_SETTINGS}, pendingRoute: null, trip: null, lastGpsFix: null,
+  lastRouteChange: 0, lastDecision: '—', savePinFor: 'home', manualRouteUntil: 0
 };
 const RECHECK_MS = 90_000;
 const MIN_RECHECK_MS = 35_000;
@@ -22,27 +26,88 @@ function safeStorageSet(key, value) { try { localStorage.setItem(storageKey(key)
 function safeStorageRemove(key) { try { localStorage.removeItem(storageKey(key)); } catch {} }
 function escapeCoordinate(coord) { return `${coord[0].toFixed(6)},${coord[1].toFixed(6)}`; }
 
-function readHome() {
+function readPlace(key) {
   try {
-    const value = JSON.parse(safeStorageGet('home') || 'null');
+    const value = JSON.parse(safeStorageGet(key) || 'null');
     if (value && isValidCoordinate(value.coordinates)) return value;
   } catch {}
   return null;
 }
 function setHome(coordinates, name='البيت') {
+  setPlace('home',coordinates,name);
+}
+function setPlace(which, coordinates, name=which==='home'?'البيت':'العمل') {
   if (!isValidCoordinate(coordinates)) {feedback('إحداثيات غير صحيحة.',true);return;}
-  state.home = {coordinates: coordinates.map(Number), name: String(name).slice(0,150)};
-  safeStorageSet('home', JSON.stringify(state.home));
-  $('home-details').textContent = `${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
+  const place={coordinates: coordinates.map(Number), name: String(name).slice(0,150)};
+  state[which]=place;
+  safeStorageSet(which, JSON.stringify(place));
+  $(`${which}-details`).textContent = `${place.name} — ${escapeCoordinate(place.coordinates)}`;
   $('results').replaceChildren();
-  if (state.homeMarker) state.homeMarker.remove();
+  const markerKey=which==='home'?'homeMarker':'workMarker';
+  if (state[markerKey]) state[markerKey].remove();
   if (state.map) {
-    state.homeMarker = new mapboxgl.Marker({color:'#e06d4e'}).setLngLat(coordinates)
-      .setPopup(new mapboxgl.Popup({offset:18}).setText('البيت')).addTo(state.map);
-    state.map.flyTo({center:coordinates,zoom:13});
+    state[markerKey] = new mapboxgl.Marker({color:which==='home'?'#e06d4e':'#2a5eaa'})
+      .setLngLat(place.coordinates).setPopup(new mapboxgl.Popup({offset:18}).setText(name)).addTo(state.map);
+    state.map.flyTo({center:place.coordinates,zoom:13});
   }
-  feedback('تم حفظ البيت. ابدأ الملاحة لتفعيل مقارنة الطرق.');
-  if (state.watchId !== null) requestRoutes(true);
+  feedback(`تم حفظ ${which==='home'?'البيت':'العمل'}.`);
+  if (state.watchId !== null && state.destination===which) requestRoutes(true);
+}
+function selectedDestination() {return state[state.destination];}
+function downloadFile(contents, filename, mime) {
+  const url=URL.createObjectURL(new Blob([contents],{type:mime}));
+  const anchor=document.createElement('a');anchor.href=url;anchor.download=filename;
+  document.body.append(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function readSettings() {
+  try {return normalizeSettings(JSON.parse(safeStorageGet('settings')||'{}'));}
+  catch {return {...DEFAULT_SETTINGS};}
+}
+function updateSettingsUI() {
+  $('mode').value=state.settings.mode;
+  $('consumption').value=state.settings.litersPer100km;
+  $('fuel-price').value=state.settings.fuelPriceAED;
+  $('time-value').value=state.settings.valueOfTimeAEDPerHour;
+}
+function saveSettings() {
+  state.settings=normalizeSettings({mode:$('mode').value,
+    litersPer100km:$('consumption').value,fuelPriceAED:$('fuel-price').value,
+    valueOfTimeAEDPerHour:$('time-value').value});
+  safeStorageSet('settings',JSON.stringify(state.settings));
+  updateSettingsUI(); renderRouteSummary();renderHistory();
+  feedback('حُفظت الإعدادات على هذا الجهاز. التكلفة لا تشمل سالك أو المواقف.');
+}
+function renderHistory() {
+  const trips=readTrips();const stats=tripStats(trips,state.destination);
+  $('trip-count').textContent=String(stats.count);
+  $('median-duration').textContent=stats.medianSeconds===null?'—':formatMinutes(stats.medianSeconds);
+  $('eta-error').textContent=stats.medianEtaErrorSeconds===null?'—':formatMinutes(stats.medianEtaErrorSeconds);
+  const buckets=departureBuckets(trips,state.destination);
+  const best=buckets.sort((a,b)=>a.medianSeconds-b.medianSeconds)[0];
+  $('historical').textContent=best
+    ? `من سجلك السابق: الساعة ${best.key.split('-')[1]} كان وسيط الرحلة ${formatMinutes(best.medianSeconds)} (${best.count} رحلات). هذا ليس توقعًا حيًا.`
+    : 'نحتاج 3 رحلات مكتملة على الأقل في نفس اليوم والساعة لعرض مقارنة تاريخية.';
+}
+function finishTrip(arrived=false) {
+  if(!state.trip)return;
+  const t=state.trip;state.trip=null;
+  const seconds=Math.round((Date.now()-new Date(t.startAt).getTime())/1000);
+  if(seconds<120 || !Number.isFinite(seconds) || t.distanceMeters<200 || t.initialEtaSeconds===null) return;
+  saveTrip({id:t.id,destination:t.destination,startAt:t.startAt,endAt:new Date().toISOString(),
+    durationSeconds:Math.min(seconds,86399),distanceMeters:Math.min(t.distanceMeters,1499999),
+    initialEtaSeconds:t.initialEtaSeconds},state.settings.maxHistory);
+  renderHistory();
+  feedback(arrived?'تم حفظ الرحلة عند الوصول.':'تم حفظ الرحلة عند الإيقاف.');
+}
+function trackTripPosition(coord, accuracy, timestamp) {
+  if(!state.trip || accuracy>70)return;
+  const previous=state.lastGpsFix;state.lastGpsFix={coord, timestamp};
+  if(!previous)return;
+  const seconds=(timestamp-previous.timestamp)/1000;
+  if(seconds<=0 || seconds>60)return;
+  const delta=haversine(previous.coord,coord);
+  if(delta>7 && delta/seconds<42)state.trip.distanceMeters+=delta;
 }
 
 function initializeMap(token) {
@@ -73,7 +138,8 @@ function initializeMap(token) {
       map.addLayer({id:'alternates-line',type:'line',source:'alternates',paint:{'line-color':'#8b9dae','line-width':5,'line-opacity':.65},layout:{'line-cap':'round','line-join':'round'}});
       map.addLayer({id:'selected-outline',type:'line',source:'selected',paint:{'line-color':'#fff','line-width':9},layout:{'line-cap':'round','line-join':'round'}});
       map.addLayer({id:'selected-line',type:'line',source:'selected',paint:{'line-color':'#169d83','line-width':6},layout:{'line-cap':'round','line-join':'round'}});
-      if (state.home) setHome(state.home.coordinates,state.home.name);
+      if (state.home) setPlace('home',state.home.coordinates,state.home.name);
+      if (state.work) setPlace('work',state.work.coordinates,state.work.name);
       if (state.position) drawUserPosition();
       renderRoutesOnMap();
       setStatus('الخريطة جاهزة');
@@ -105,6 +171,7 @@ function drawUserPosition() {
 function selectRoute(index) {
   if (!state.routes[index]) return;
   state.selected = index;
+  state.pendingRoute=null;state.manualRouteUntil=Date.now()+15*60_000;
   state.announced.clear();
   renderRouteSummary();
   renderRoutesOnMap();
@@ -121,15 +188,16 @@ function renderRouteSummary() {
     const route=state.routes[i], button=document.createElement('button');
     button.type='button'; button.className=`route ${i===state.selected?'selected':''}`;
     const label=document.createElement('span');
-    label.textContent = `${i===0?'★ الأسرع حسب التقدير':'بديل'} · ${routeName(route,i)}`;
+    label.textContent = `${i===state.selected?'✓ المختار':i===0?'★ الأسرع زمنًا':'بديل'} · ${routeName(route,i)}`;
     const km=document.createElement('small');km.textContent=`${(route.distance/1000).toFixed(1)} كم`;
-    label.appendChild(km);
+    const cost=document.createElement('small');cost.textContent=`وقود تقديري ${formatAED(fuelCost(route,state.settings))} · دون سالك` ;label.append(km,cost);
     const time=document.createElement('b');time.textContent=formatMinutes(route.duration);
     button.append(label,time);button.onclick=()=>selectRoute(i);$('routes').appendChild(button);
   }
   if (!selected) { $('eta').textContent='—';$('distance').textContent='—';return; }
   $('eta').textContent=new Intl.DateTimeFormat('ar-AE',{hour:'2-digit',minute:'2-digit'}).format(new Date(Date.now()+selected.duration*1000));
   $('distance').textContent=`${(selected.distance/1000).toFixed(1)} كم`;
+  $('fuel-estimate').textContent=formatAED(fuelCost(selected,state.settings));
 }
 function directionSymbol(indications) {
   const arrows={'straight':'↑','left':'↖','right':'↗','slight left':'↖','slight right':'↗','sharp left':'←','sharp right':'→','uturn':'↩','none':'·'};
@@ -180,12 +248,13 @@ function updateGuidance() {
   }
 }
 async function requestRoutes(force=false) {
-  if (!state.token || !state.home || !state.position) return;
+  const destination=selectedDestination();
+  if (!state.token || !destination || !state.position) return;
   if (Date.now()-state.fixAt>MAX_FIX_AGE_MS) {feedback('الموقع قديم؛ انتظر إشارة GPS جديدة قبل تحديث الطريق.',true);return;}
   if (state.accuracy>150) {feedback('دقة GPS غير كافية لحساب التوجيه بأمان. انتظر تحسن الإشارة.',true);return;}
   if (!force && Date.now()-state.lastRequestAt<MIN_RECHECK_MS) return;
-  if (haversine(state.position,state.home.coordinates)<80) {
-    feedback('وصلت تقريبًا إلى البيت.');stopNavigation();return;
+  if (haversine(state.position,destination.coordinates)<100) {
+    stopNavigation(true);return;
   }
   state.lastRequestAt=Date.now();
   state.controller?.abort();
@@ -193,7 +262,7 @@ async function requestRoutes(force=false) {
   const controller=state.controller;
   state.requesting=true;
   setStatus('تحديث الطريق…');
-  const points=`${escapeCoordinate(state.position)};${escapeCoordinate(state.home.coordinates)}`;
+  const points=`${escapeCoordinate(state.position)};${escapeCoordinate(destination.coordinates)}`;
   const params=new URLSearchParams({alternatives:'true',steps:'true',overview:'full',geometries:'geojson',language:'ar',access_token:state.token});
   try {
     const response=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${points}?${params}`,{signal:controller.signal});
@@ -201,9 +270,25 @@ async function requestRoutes(force=false) {
     if (!response.ok || payload.code!=='Ok') throw new Error(payload.message || `HTTP ${response.status}`);
     const valid=(payload.routes || []).filter(routeIsPlausible).sort((a,b)=>a.duration-b.duration);
     if (!valid.length) throw new Error('لم يتم العثور على طريق قابل للقيادة');
+    if(state.controller!==controller)return; // stale response must never overwrite a newer route
+    const previous=state.routes[state.selected]||null;
+    const offRoute=state.offRouteCount>=3;
+    let decision=chooseRoute(valid,previous,state.pendingRoute,state.settings,state.routes.length===0||offRoute);
+    if(!offRoute && Date.now()<state.manualRouteUntil && previous){
+      const manual=valid.findIndex(route=>route===previous);
+      const matched=manual>=0?manual:valid.findIndex(route=>{
+        const roads=new Set((route.legs?.[0]?.steps||[]).map(x=>x.name).filter(Boolean));
+        const prior=(previous.legs?.[0]?.steps||[]).map(x=>x.name).filter(Boolean);
+        return prior.length>=2 && prior.filter(name=>roads.has(name)).length/prior.length>=.75;
+      });
+      if(matched>=0)decision={index:matched,pending:null,reason:'manual-locked'};
+    }
+    state.pendingRoute=decision.pending;state.lastDecision=decision.reason;
+    if(previous && decision.reason==='better-route') speaker('وجدت طريقًا أسرع بشكل ملحوظ. تحقق من إمكانية تغيير الطريق بأمان.');
     state.routes=valid;
-    state.selected=0;
+    state.selected=decision.index;
     state.offRouteCount=0;
+    if(state.trip && state.trip.initialEtaSeconds===null)state.trip.initialEtaSeconds=valid[state.selected].duration;
     renderRouteSummary();renderRoutesOnMap();updateGuidance();
     if (state.map && valid[0]?.geometry?.coordinates && !state.hasCentered) {
       const bounds=valid[0].geometry.coordinates.reduce((b,c)=>b.extend(c),new mapboxgl.LngLatBounds(valid[0].geometry.coordinates[0],valid[0].geometry.coordinates[0]));
@@ -211,7 +296,7 @@ async function requestRoutes(force=false) {
     }
     $('last-update').textContent=new Intl.DateTimeFormat('ar-AE',{hour:'2-digit',minute:'2-digit'}).format(new Date());
     setStatus('الملاحة نشطة');
-    feedback('تم حساب الطريق باستخدام بيانات Mapbox حيث تتوفر. يُعاد التقييم آليًا كل 90 ثانية ما دامت الصفحة نشطة.');
+    feedback(`تم تقييم المسارات (${decision.reason}). يُعاد التقييم آليًا عند نشاط التطبيق؛ Waze متاح للملاحة المعتمدة.`);
   } catch(error) {
     if (error.name==='AbortError') return;
     setStatus('تعذر تحديث المسار');
@@ -222,7 +307,9 @@ function onPosition(position) {
   const {longitude,latitude,accuracy,heading}=position.coords;
   const coord=[longitude,latitude];
   if (!isValidCoordinate(coord)) return;
+  if(position.timestamp && state.lastGpsFix && position.timestamp<=state.lastGpsFix.timestamp)return;
   state.position=coord;state.accuracy=accuracy;state.heading=heading;
+  trackTripPosition(coord,accuracy,position.timestamp||Date.now());
   state.fixAt=Date.now();
   drawUserPosition();
   if (state.routes.length) {
@@ -244,10 +331,12 @@ function onPositionError(error) {
 }
 function startNavigation() {
   if (!state.map) {feedback('شغّل الخريطة أولًا.',true);return;}
-  if (!state.home) {feedback('حدد موقع البيت أولًا.',true);return;}
+  if (!selectedDestination()) {feedback('حدد الوجهة المحددة أولًا.',true);return;}
   if (!('geolocation' in navigator)) {feedback('المتصفح لا يدعم GPS. استخدم HTTPS أو localhost.',true);return;}
   if (state.watchId!==null) return;
   state.hasCentered=false;
+  state.trip={id:crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`,destination:state.destination,startAt:new Date().toISOString(),distanceMeters:0,initialEtaSeconds:null};
+  state.lastGpsFix=null;
   state.watchId=navigator.geolocation.watchPosition(onPosition,onPositionError,{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
   state.timer=setInterval(()=>{if (!document.hidden && state.watchId!==null) requestRoutes();},RECHECK_MS);
   $('start').disabled=true;$('stop').disabled=false;
@@ -255,17 +344,18 @@ function startNavigation() {
   feedback('تم طلب إذن الموقع. يجب إبقاء الصفحة فعالة لتستمر التحديثات.');
   speaker('بدأت الملاحة الذكية.');
 }
-function stopNavigation() {
+function stopNavigation(arrived=false) {
+  finishTrip(arrived);
   if (state.watchId!==null) navigator.geolocation.clearWatch(state.watchId);
   state.watchId=null;
   if(state.timer!==null) clearInterval(state.timer);
   state.timer=null;state.controller?.abort();
-  state.routes=[];state.selected=0;state.position=null;state.closest=null;
+  state.routes=[];state.selected=0;state.position=null;state.closest=null;state.pendingRoute=null;state.lastGpsFix=null;state.manualRouteUntil=0;
   state.announced.clear();state.offRouteCount=0;
   if (state.userMarker){state.userMarker.remove();state.userMarker=null;}
   renderRouteSummary();renderRoutesOnMap();updateGuidance();
   $('start').disabled=false;$('stop').disabled=true;
-  $('eta').textContent='—';$('distance').textContent='—';
+  $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';
   setStatus('متوقفة');
 }
 async function searchPlace() {
@@ -284,13 +374,38 @@ async function searchPlace() {
       if (!isValidCoordinate(coord)) continue;
       const name=result.properties?.full_address||result.properties?.name||'موقع على الخريطة';
       const button=document.createElement('button');button.type='button';button.className='result';
-      button.textContent=name;button.onclick=()=>setHome(coord,name);
+      button.textContent=name;button.onclick=()=>setPlace(state.savePinFor,coord,name);
       $('results').appendChild(button);
     }
     if (!$('results').childElementCount) $('results').textContent='لا توجد نتائج. جرّب تحديد البيت بالنقر على الخريطة.';
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  $('destination').addEventListener('change',()=>{
+    if(state.watchId!==null)stopNavigation();
+    state.destination=$('destination').value;renderHistory();renderRouteSummary();
+    const target=selectedDestination();if(target && state.map)state.map.flyTo({center:target.coordinates,zoom:12});
+  });
+  $('place-kind').addEventListener('change',()=>{state.savePinFor=$('place-kind').value;});
+  $('settings-save').addEventListener('click',saveSettings);
+  $('export-json').addEventListener('click',()=>downloadFile(exportTrips(readTrips()),'my-commute-trips.json','application/json'));
+  $('export-csv').addEventListener('click',()=>downloadFile('\ufeff'+csvTrips(readTrips()),'my-commute-trips.csv','text/csv;charset=utf-8'));
+  $('import-json').addEventListener('change',async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    try {if(file.size>2_000_000)throw new Error('الملف كبير جدًا');
+      const count=importTrips(await file.text(),state.settings.maxHistory);
+      renderHistory();feedback(`استيراد ناجح: ${count} رحلة محفوظة.`);
+    }catch(error){feedback(`رفض الاستيراد: ${error.message}`,true)}finally{e.target.value='';}
+  });
+  $('delete-history').addEventListener('click',()=>{
+    if(!confirm('حذف جميع الرحلات المحفوظة في هذا المتصفح؟ لا يمكن التراجع.'))return;
+    clearTrips();renderHistory();feedback('حُذف سجل الرحلات من هذا المتصفح.');
+  });
+  $('open-waze').addEventListener('click',()=>{
+    const dest=selectedDestination();if(!dest){feedback('حدد وجهتك أولًا.',true);return;}
+    const [lng,lat]=dest.coordinates;
+    window.open(`https://waze.com/ul?ll=${encodeURIComponent(`${lat},${lng}`)}&navigate=yes`,'_blank','noopener,noreferrer');
+  });
   $('save-token').addEventListener('click',()=>initializeMap($('token').value.trim()));
   $('start').addEventListener('click',startNavigation);
   $('stop').addEventListener('click',()=>{stopNavigation();feedback('تم إيقاف GPS وتحديثات الطريق.');});
@@ -300,22 +415,26 @@ function wireEvents() {
     if(!state.map){feedback('شغّل الخريطة أولًا.',true);return;}
     if(state.pinMode)return;
     state.pinMode=true;feedback('اضغط على موقع المنزل فوق الخريطة لتثبيته.');
-    const handler=event=>{state.pinMode=false;setHome([event.lngLat.lng,event.lngLat.lat],'البيت (تم تحديده على الخريطة)');};
+    const handler=event=>{state.pinMode=false;setPlace(state.savePinFor,[event.lngLat.lng,event.lngLat.lat],state.savePinFor==='home'?'البيت':'العمل');};
     state.map.once('click',handler);
   });
   $('clear-home').addEventListener('click',()=>{
-    stopNavigation();state.home=null;safeStorageRemove('home');
-    if(state.homeMarker){state.homeMarker.remove();state.homeMarker=null;}
-    $('home-details').textContent='لم يتم تحديد البيت بعد.';
-    feedback('حُذف الموقع المحفوظ من هذا المتصفح.');
+    if(state.watchId!==null)stopNavigation();
+    const which=state.savePinFor;state[which]=null;safeStorageRemove(which);
+    const marker=which==='home'?'homeMarker':'workMarker';
+    if(state[marker]){state[marker].remove();state[marker]=null;}
+    $(`${which}-details`).textContent='غير محدد.';
+    feedback('حُذف الموقع المختار من هذا المتصفح.');
   });
   document.addEventListener('visibilitychange',()=>{
     if (!document.hidden && state.watchId!==null) requestRoutes();
   });
 }
 wireEvents();
-state.home=readHome();
+state.home=readPlace('home');state.work=readPlace('work');state.settings=readSettings();
 if(state.home) $('home-details').textContent=`${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
+if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoordinate(state.work.coordinates)}`;
+updateSettingsUI();renderHistory();
 const token=safeStorageGet('token');
 if(token){$('token').value=token;window.addEventListener('load',()=>initializeMap(token));}
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));

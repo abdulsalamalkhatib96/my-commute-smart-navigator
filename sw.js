@@ -1,5 +1,5 @@
-const CACHE='mycommute-smartnav-shell-v1';
-const SHELL=['./','./index.html','./style.css','./app.mjs','./nav-core.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png'];
+const CACHE='mycommute-smartnav-shell-v2';
+const SHELL=['./','./index.html','./style.css','./app.mjs','./nav-core.mjs','./decision-core.mjs','./trip-store.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(names=>Promise.all(names.filter(n=>n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

@@ -28,3 +28,8 @@ test('route validation does not accept empty or zero-duration routes',()=>{
   assert.equal(routeIsPlausible({duration:500,distance:1234,geometry:{coordinates:[[55,25],[56,26]]}}),true);
   assert.equal(routeIsPlausible({duration:0,distance:1234,geometry:{coordinates:[[55,25],[56,26]]}}),false);
 });
+
+test('lane guidance does not steal lanes from a future intersection',()=>{
+  const step={intersections:[{}, {lanes:[{valid:true,indications:['right']}]}]};
+  assert.equal(laneSummary(step),null);
+});
