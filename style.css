@@ -45,3 +45,10 @@ select:focus-visible,input[type=number]:focus-visible{outline:3px solid #deab45;
 .drive-actions button{flex:1;min-height:52px;white-space:normal}
 #drive-summary{font-size:1rem;color:#153247}
 @media(min-width:950px){.drive-mode .dashboard .highlight-panel{left:22px;right:auto;width:450px}.drive-mode .drive-toolbar{left:22px;right:auto;width:450px}}
+
+.departure-forecast{margin:14px 0;border:1px solid #cfdded;border-radius:14px;padding:13px;background:#f7fbff}
+.departure-forecast h3{font-size:1rem;margin:0 0 6px}
+#departure-results{margin-top:12px;display:grid;gap:8px;font-size:.9rem}
+.departure-row{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid #d5dee6;border-radius:10px;background:#fff}
+.departure-row.fastest{border-color:#15876a;background:#e9f8f1}
+.departure-row span{color:#4b6579}

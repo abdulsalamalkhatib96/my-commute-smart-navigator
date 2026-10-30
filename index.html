@@ -49,6 +49,12 @@
         <select id="preview-origin" aria-label="مكان الانطلاق للمعاينة"><option value="work">من العمل</option><option value="home">من البيت</option></select>
         <label class="switch"><input id="avoid-tolls" type="checkbox"> حاول تجنّب الطرق المدفوعة (لا يضمن عدم وجود رسوم)</label>
         <div class="horizontal wrap-buttons"><button id="preview-route" type="button" class="primary">قارن الطرق الآن</button><button id="refresh-route" type="button" class="secondary">تحديث الطريق</button></div>
+        <section class="departure-forecast" aria-label="مقارنة مواعيد المغادرة">
+          <h3>متى أطلع لحتى أخفف الزحمة؟</h3>
+          <p class="help">قارن وقت القيادة والوصول عند الخروج الآن أو بعد 15 أو 30 أو 60 دقيقة. التوقعات من بيانات Mapbox وليست ضمانًا لحالة المرور في المستقبل.</p>
+          <button id="departure-check" type="button" class="secondary">قارن أوقات المغادرة</button>
+          <div id="departure-results" aria-live="polite">اضغط للمقارنة وفق توقّعات Mapbox التاريخية والمرور المتاح.</div>
+        </section>
         <div id="traffic-summary" class="traffic-details" role="status" aria-live="polite">لا توجد بيانات طريق حتى الآن.</div>
         <div class="traffic-legend" aria-label="ألوان الازدحام"><span><i class="traffic-dot free"></i> خفيف</span><span><i class="traffic-dot medium"></i> متوسط</span><span><i class="traffic-dot heavy"></i> كثيف</span><span><i class="traffic-dot severe"></i> شديد</span><span><i class="traffic-dot unknown"></i> غير معروف</span></div>
         <p class="help">اللون يصف ازدحام مقاطع الطريق عندما يرسله Mapbox، وليس سرعة المسارب الفردية. الوقت تقديري وقد يتغير أثناء القيادة.</p>
