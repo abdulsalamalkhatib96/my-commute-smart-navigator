@@ -154,3 +154,8 @@ A redesigned responsive dashboard adds top commute shortcuts, a mobile bottom do
 ## Optional on-screen wake lock (web only)
 
 The full-screen browser drive UI offers a user-clicked **Keep screen awake** control via Screen Wake Lock API on supporting HTTPS browsers. It is session-only, can be released by device power-saving/visibility rules, and is explicitly disabled when you leave drive mode. It does not ensure continued GPS, audio or route refresh when the device is locked. Users with no configured Mapbox token see the setup panel immediately rather than a permanently blank map.
+
+
+## Browser smoke in CI
+
+The GitHub Tests workflow runs a no-token, localhost headless Chrome bootstrap smoke after JavaScript syntax and unit tests. It verifies the actual ES-module graph initializes and core controls are present, without making live Mapbox calls or collecting positions. This is **not** a substitute for real traffic/GPS testing or full device accessibility evaluation.

@@ -19,3 +19,6 @@ jobs:
           for file in *.mjs tests/*.mjs sw.js; do node --check "$file"; done
       - name: Run navigation helper tests
         run: node --test tests/*.test.mjs
+      - name: Browser bootstrap smoke test (no Mapbox credentials)
+        timeout-minutes: 2
+        run: bash tests/browser-smoke.sh
