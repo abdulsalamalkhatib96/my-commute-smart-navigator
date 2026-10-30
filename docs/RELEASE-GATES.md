@@ -56,7 +56,8 @@ All items start **unverified** until supported by evidence. A green unit-test pi
 - [ ] Calibrated forward-looking departure predictions with uncertainty
 - [x] AES-256-GCM password-encrypted local cross-device backup export/import (manual file transfer).
 - [ ] Authenticated Laravel cloud sync (requires a deployed and secured backend)
-- [ ] Privacy policy, retention controls, data export/delete, billing guardrails and API usage budgets
+- [x] Browser-local data export/delete, optional reminders and conservative local API request caps.
+- [ ] Published privacy policy, provider-side billing caps/alerts and externally verified retention settings
 - [ ] Opt-in departure reminders and device-specific push notifications
 
 ## Limits not solved by development alone
