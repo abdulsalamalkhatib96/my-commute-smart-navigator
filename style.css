@@ -137,3 +137,6 @@ footer a{color:#057c70;font-weight:700}
 .provider-diagnostics{margin:12px 0;padding:12px;border:1px solid #cfe1e8;background:#f1f8fa;border-radius:12px}
 .provider-diagnostics button{width:100%;min-height:48px}
 .provider-diagnostics p{margin:8px 0 0;line-height:1.65}
+
+#eta-calibration{border-right:4px solid #0d927e;line-height:1.65}
+#arrived:not(:disabled){background:#def7e9;color:#0b6c44;border:1px solid #9ddbb9}

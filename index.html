@@ -69,11 +69,12 @@
         <h2>4. شغّل رحلتك</h2>
         <label class="fieldlabel" for="destination">الوجهة</label>
         <select id="destination" aria-label="الوجهة"><option value="home">إلى البيت</option><option value="work">إلى العمل</option></select>
-        <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إنهاء وحفظ الرحلة</button></div>
+        <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إيقاف الرحلة (قد تكون غير مكتملة)</button><button id="arrived" type="button" class="secondary" disabled>وصلت — حفظ رحلة مكتملة</button></div>
         <button type="button" id="drive-mode-toggle" class="secondary full-width">وضع خريطة القيادة</button>
         <label class="switch"><input id="voice" type="checkbox" checked> إرشادات صوتية عندما يدعمها المتصفح</label>
         <div class="metrics"><div><span>الوصول المتوقع</span><strong id="eta">—</strong></div><div><span>المسافة المتبقية</span><strong id="distance">—</strong></div><div><span>الوقود المتوقع*</span><strong id="fuel-estimate">—</strong></div><div><span>آخر تحديث</span><strong id="last-update">—</strong></div></div><p class="help">* التقدير للوقود فقط؛ لا يشمل سالك والمواقف ولا يمثل تكلفة الرحلة الكاملة.</p>
         <p id="route-insight" class="traffic-details">قارن الطرق من الأزرار السريعة.</p>
+        <p id="eta-calibration" class="traffic-details" aria-live="polite">يتعلّم الموقع من الرحلات المكتملة بعد تسجيل خمس رحلات على الأقل.</p>
         <p id="route-cost-insight" class="traffic-details" aria-live="polite">لتقدير تكلفة الوقود وسالك لكل بديل، أدخل عدد عبورات سالك المحاسَب عليها يدويًا بعد ظهور المسارات.</p>
         <div id="routes" class="routes" aria-live="polite"><p class="help">ستظهر الطرق بعد تشغيل GPS وتحديد الوجهة.</p></div>
         <button id="open-waze" type="button" class="secondary full-width">افتح وجهتك في Waze للملاحة المعتمدة</button><p class="help">Waze قد يختار مسارًا مختلفًا عن Mapbox؛ لا يعتبر هذا زر متابعة نفس الطريق المختار.</p>
