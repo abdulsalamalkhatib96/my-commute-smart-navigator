@@ -137,3 +137,8 @@ Mapbox v5 Directions returns toll alerts and violated toll-avoidance notices on 
 ## Browser-side Mapbox usage safeguards
 
 The website now limits its own requests by Dubai-local day: 240 standard routing calculations, 30 geocoding searches, and 20 future forecast queries (the four departure windows consume four credits). This budget is **browser-local, can be reset by removing browser storage, and does not prevent other clients from consuming Mapbox billable requests**. It excludes map tile/map-load consumption. Restrict public tokens, configure Mapbox account billing controls and check actual usage separately; do not consider this a hard provider quota.
+
+
+## Website privacy page
+
+The public `privacy.html` page documents local storage, Mapbox processing, notification permissions, encrypted vs unencrypted backups, local deletion, GitHub Pages hosting and browser limits. It is part of the Pages deployment and offline shell. This is a technical data-handling disclosure, not externally reviewed legal advice.
