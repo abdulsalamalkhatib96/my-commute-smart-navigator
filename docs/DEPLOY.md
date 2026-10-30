@@ -1,16 +1,16 @@
 # Deploy website as HTTPS PWA with GitHub Pages
 
-This project contains a manual deployment workflow: `.github/workflows/pages.yml`.
+This project contains an automatic `main`-branch deployment workflow, with optional manual dispatch: `.github/workflows/pages.yml`.
 
 **One-time GitHub setting:** Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**. The connected GitHub tools cannot enable this administrative repository setting automatically.
 
-1. Verify that the latest **Tests** workflow has passed.
-2. Go to **Actions → Deploy website to GitHub Pages → Run workflow**, selecting `main`.
+1. After one-time Pages setup, push/merge to `main` automatically deploys the web build. The manual **Actions → Deploy website to GitHub Pages → Run workflow** command remains available.
+2. Verify the **Deploy website to GitHub Pages** Actions workflow succeeded.
 3. When successful, access `https://abdulsalamalkhatib96.github.io/my-commute-smart-navigator/` from the phone.
 4. Create a Mapbox **public** token `pk...` restricted to the Pages origin(s), including `https://abdulsalamalkhatib96.github.io`. Do not commit secrets or home coordinates.
 5. On your phone allow location permission in HTTPS browser, save home/work, and add the site to Home Screen.
 
-**Not automatic:** Page publication requires a manual workflow dispatch by design. It avoids failing your CI until the Pages setting is enabled. Once enabled, the workflow uploads only the explicitly listed website assets, excluding Android files, tests, local data, and secrets.
+**Automatic after Pages setup:** A commit to `main` starts deployment. Without enabling the GitHub Pages source setting, deployment can fail even if all source tests pass. The workflow publishes only the explicitly listed website assets; it excludes native files, tests, local data, and secrets.
 
 **Safety:** PWA cannot guarantee continued geolocation or speech when locked/backgrounded. Do not treat this as a primary in-car navigator. Use the built-in Waze deep link for actual guidance. GitHub Pages is publicly reachable; private location data should never be embedded in source or static files.
 

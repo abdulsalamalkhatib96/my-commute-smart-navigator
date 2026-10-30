@@ -1,5 +1,7 @@
 name: Deploy website to GitHub Pages
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,8 +24,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Node tests
-        run: node --test tests/*.test.mjs
+      - name: Node tests and release artifact consistency
+        run: node --test tests/*.test.mjs && node --check app.mjs
       - name: Build safe static artifact
         run: |
           mkdir -p public/assets
