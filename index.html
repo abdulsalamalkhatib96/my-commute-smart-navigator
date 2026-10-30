@@ -19,6 +19,12 @@
     <div><small class="eyebrow">MY COMMUTE / PERSONAL NAVIGATOR</small><h1>مساعد رحلاتك الذكي</h1></div>
     <span class="status-pill" id="status" role="status" aria-live="polite">جاهز للإعداد</span>
   </header>
+  <section class="quick-journey" aria-label="رحلة سريعة">
+    <div><strong>وين رايح اليوم؟</strong><span>قارن طريقك من أماكنك المحفوظة بنقرة واحدة بدون GPS.</span></div>
+    <button id="quick-home" type="button" class="primary">إلى البيت من العمل</button>
+    <button id="quick-work" type="button" class="secondary">إلى العمل من البيت</button>
+  </section>
+  <p id="connection-status" class="connection-status" role="status" data-state="idle">جاهز للمقارنة.</p>
   <main class="layout">
     <section class="dashboard" aria-label="التحكم في الملاحة">
       <section class="panel" id="setup-panel">
@@ -54,6 +60,7 @@
         <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إنهاء وحفظ الرحلة</button></div>
         <label class="switch"><input id="voice" type="checkbox" checked> إرشادات صوتية عندما يدعمها المتصفح</label>
         <div class="metrics"><div><span>الوصول المتوقع</span><strong id="eta">—</strong></div><div><span>المسافة المتبقية</span><strong id="distance">—</strong></div><div><span>الوقود المتوقع*</span><strong id="fuel-estimate">—</strong></div><div><span>آخر تحديث</span><strong id="last-update">—</strong></div></div><p class="help">* التقدير للوقود فقط؛ لا يشمل سالك والمواقف ولا يمثل تكلفة الرحلة الكاملة.</p>
+        <p id="route-insight" class="traffic-details">قارن الطرق من الأزرار السريعة.</p>
         <div id="routes" class="routes" aria-live="polite"><p class="help">ستظهر الطرق بعد تشغيل GPS وتحديد الوجهة.</p></div>
         <button id="open-waze" type="button" class="secondary full-width">افتح وجهتك في Waze للملاحة المعتمدة</button><p class="help">Waze قد يختار مسارًا مختلفًا عن Mapbox؛ لا يعتبر هذا زر متابعة نفس الطريق المختار.</p>
       </section>
@@ -87,6 +94,7 @@
         <div class="metrics"><div><span>الرحلات</span><strong id="trip-count">0</strong></div><div><span>المدة الوسطية</span><strong id="median-duration">—</strong></div><div><span>وسيط خطأ التوقع</span><strong id="eta-error">—</strong></div></div>
         <p id="historical" class="help"></p>
         <div class="horizontal wrap-buttons"><button type="button" class="secondary" id="export-json">نسخة JSON</button><button type="button" class="secondary" id="export-csv">تصدير CSV</button><label for="import-json" class="upload-button">استيراد JSON</label><input type="file" id="import-json" accept="application/json,.json" hidden><button type="button" class="secondary danger" id="delete-history">حذف السجل</button></div>
+        <section class="profile-backup"><strong>نسخة عناوينك وإعداداتك</strong><p class="help">لا تتضمن مفتاح Mapbox ولا سجل الرحلات (له تصدير منفصل).</p><div class="horizontal wrap-buttons"><button id="export-profile" type="button" class="secondary">تصدير الإعدادات</button><label for="import-profile" class="upload-button">استيراد الإعدادات</label><input type="file" id="import-profile" hidden accept="application/json,.json"></div></section>
         <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. لا يوجد حساب أو مزامنة بين الأجهزة في هذه النسخة.</p>
       </section>
       <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">المعاينة والتحديث يعملان ما دامت الصفحة مفتوحة. هذه أداة تخطيط ومقارنة وليست بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>

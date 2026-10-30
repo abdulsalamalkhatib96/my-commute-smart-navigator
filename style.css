@@ -13,6 +13,13 @@ select:focus-visible,input[type=number]:focus-visible{outline:3px solid #deab45;
 .upload-button:focus-within{outline:2px solid #e8a846}
 @media(max-width:520px){.settinggrid{grid-template-columns:1fr}.map-panel{height:44vh;min-height:310px}.topbar{align-items:flex-start;flex-wrap:wrap}.topbar h1{font-size:1.12rem}button,.upload-button{min-height:44px}}
 
+.quick-journey{max-width:1566px;margin:14px auto 0;display:flex;align-items:center;gap:10px;padding:14px 16px;border:1px solid #acd5cb;background:#ecf9f5;border-radius:16px;flex-wrap:wrap}
+.quick-journey>div{flex:1;min-width:220px;display:flex;flex-direction:column;gap:4px}.quick-journey>div span{font-size:.85rem;color:#526a70}
+.connection-status{max-width:1566px;margin:8px auto 0;padding:10px 15px;border-radius:11px;background:#eef3f8;color:#365168;font-size:.84rem}
+.connection-status[data-state=offline],.connection-status[data-state=stale]{background:#fff1e7;color:#8b3e19}.connection-status[data-state=paused]{background:#fff7dc;color:#755500}
+.connection-status[data-state=fresh]{background:#e9f8ef;color:#146343}
+.profile-backup{margin-top:14px;padding:12px;border-radius:12px;border:1px solid #d6e3e9;background:#f5f9fb}
+@media(max-width:720px){.quick-journey{margin:10px 10px 0;gap:8px}.quick-journey button{flex:1;min-height:50px}.connection-status{margin:8px 10px 0}}
 /* Live route preview and readable traffic status */
 .preview-panel{border-color:#9dc9bf;background:linear-gradient(150deg,#fff,#f2fbf7)}
 .traffic-details{background:#f0f5fb;border:1px solid #d7e2ee;padding:12px;border-radius:12px;line-height:1.7;font-size:.9rem;margin:12px 0}
