@@ -90,6 +90,17 @@
         <p>تقدير سالك: <strong id="salik-estimate">غير معروف</strong></p>
         <p class="help">لا تدخل هذه القيمة في ترتيب الطرق لأن عدد البوابات لكل مسار غير متحقق.</p>
       </section>
+      <section class="panel" aria-label="تذكيرات المغادرة">
+        <h2>تذكيرات الذهاب والعودة</h2>
+        <p class="help">اختر المواعيد حسب توقيت دبي. التذكير يعمل عندما يكون الموقع قيد التشغيل، ولا يضمن العمل عند إغلاق المتصفح أو قفل الشاشة.</p>
+        <label class="switch"><input id="reminder-enabled" type="checkbox"> تشغيل التذكيرات</label>
+        <div class="settinggrid">
+          <label>تذكير الذهاب للعمل <input type="time" id="reminder-work" value="06:30"></label>
+          <label>تذكير العودة للبيت <input type="time" id="reminder-home" value="17:00"></label>
+        </div>
+        <div class="horizontal wrap-buttons"><button type="button" id="reminder-save" class="primary">حفظ المواعيد</button><button type="button" id="reminder-permission" class="secondary">السماح بإشعارات المتصفح</button></div>
+        <p id="reminder-status" class="help" role="status" aria-live="polite">التذكيرات متوقفة.</p>
+      </section>
       <section class="panel highlight-panel">
         <h2>توجيه المسرب عند المخرج القادم</h2>
         <div id="maneuver" class="maneuver">بانتظار تحديد الطريق…</div>
@@ -102,6 +113,7 @@
         <p id="historical" class="help"></p>
         <div class="horizontal wrap-buttons"><button type="button" class="secondary" id="export-json">نسخة JSON</button><button type="button" class="secondary" id="export-csv">تصدير CSV</button><label for="import-json" class="upload-button">استيراد JSON</label><input type="file" id="import-json" accept="application/json,.json" hidden><button type="button" class="secondary danger" id="delete-history">حذف السجل</button></div>
         <section class="profile-backup"><strong>نسخة عناوينك وإعداداتك</strong><p class="help">لا تتضمن مفتاح Mapbox ولا سجل الرحلات (له تصدير منفصل).</p><div class="horizontal wrap-buttons"><button id="export-profile" type="button" class="secondary">تصدير الإعدادات</button><label for="import-profile" class="upload-button">استيراد الإعدادات</label><input type="file" id="import-profile" hidden accept="application/json,.json"></div></section>
+        <section class="profile-backup"><strong>خصوصية بياناتك</strong><p class="help">يمكنك حذف العناوين ومفتاح Mapbox والرحلات والإعدادات والتذكيرات المخزنة في المتصفح. تأكد من تصدير النسخ الاحتياطية التي تحتاجها أولًا.</p><button type="button" id="clear-all-data" class="secondary danger">حذف كل بياناتي المحلية</button></section>
         <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. لا يوجد حساب أو مزامنة بين الأجهزة في هذه النسخة.</p>
       </section>
       <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">المعاينة والتحديث يعملان ما دامت الصفحة مفتوحة. هذه أداة تخطيط ومقارنة وليست بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>

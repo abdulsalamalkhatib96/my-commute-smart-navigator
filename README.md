@@ -117,3 +117,8 @@ Every successful merge to `main` triggers the GitHub Pages workflow. One-time re
 ## Geolocation safety guard
 
 Raw browser GPS timestamps are now checked against the actual measurement age and previous accepted fix, so stale/out-of-order fixes cannot masquerade as fresh. Off-route recovery may request a new route after a shorter, still bounded 8-second cooldown versus 35 seconds for ordinary checks. This does **not** constitute map matching or guarantee safe turn-by-turn guidance.
+
+
+## Optional foreground-only commute reminders and local privacy reset
+
+The user can set two daily reminders in Dubai time, enable them explicitly, and optionally request browser Notification permission through a user click. Reminder windows are de-duplicated per day. **No server-side scheduler or push subscription exists:** reminders do not reliably execute with the page closed or the device asleep. The app offers a separate, confirmed **delete all my local app data** action that removes its own storage prefix, including saved Mapbox public token and trips, without touching other websites' storage. PWA shell files may remain cached; they contain no private travel data.
