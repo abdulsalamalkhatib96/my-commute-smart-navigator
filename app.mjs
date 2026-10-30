@@ -857,3 +857,5 @@ checkReminders();
 const token=safeStorageGet('token')||MAPBOX_PUBLIC_TOKEN;
 if(token){$('token').value=token;window.addEventListener('load',()=>initializeMap(token));}
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+// Browser smoke can assert that every module import and control binding initialized.
+document.documentElement.dataset.appReady='true';
