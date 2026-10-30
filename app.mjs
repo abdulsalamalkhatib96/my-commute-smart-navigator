@@ -361,13 +361,17 @@ function initializeMap(token) {
   if (!/^pk\.[A-Za-z0-9._-]+$/.test(token)) {
     feedback('أدخل Public access token صحيحًا من Mapbox يبدأ بـ pk.',true); return;
   }
-  if (!window.mapboxgl?.supported()) {
-    feedback('تعذر تشغيل Mapbox GL JS. افحص الاتصال ودعم WebGL.',true);return;
-  }
   state.token = token;
   document.body.classList.remove('needs-mapbox-setup');
   safeStorageSet('token', token);
   $('token').value = token;
+  if (!window.mapboxgl?.supported?.()) {
+    state.map?.remove();state.map=null;
+    $('map').textContent='وضع المقارنة النصية متاح: لا يدعم هذا المتصفح WebGL، لكن يمكن البحث عن الأماكن ومقارنة المسارات والمرور والتكلفة من دون خريطة.';
+    setStatus('مقارنة نصية — بدون خريطة');
+    feedback('الخريطة الرسومية غير متاحة؛ تم تفعيل المقارنة النصية. استخدم Waze للملاحة أثناء القيادة.');
+    return;
+  }
   $('map').replaceChildren();
   if (state.map) state.map.remove();
   state.map = null;
@@ -677,7 +681,7 @@ async function requestRoutes(force=false,confirmedOffRoute=false) {
     state.lastGoodAt=Date.now();showConnectionState();
     state.offRouteCount=0;
     if(state.trip && state.trip.initialEtaSeconds===null)state.trip.initialEtaSeconds=valid[state.selected].duration;
-    renderRouteSummary();renderRoutesOnMap();updateGuidance();
+    renderRouteSummary();renderTrafficSummary();renderRoutesOnMap();updateGuidance();
     if (state.map && valid[0]?.geometry?.coordinates && (!state.hasCentered||!driving)) {
       const bounds=valid[0].geometry.coordinates.reduce((b,c)=>b.extend(c),new mapboxgl.LngLatBounds(valid[0].geometry.coordinates[0],valid[0].geometry.coordinates[0]));
       state.map.fitBounds(bounds,{padding:70,maxZoom:13});
@@ -727,7 +731,7 @@ function stopPreview(){
 }
 function previewRoutes(){
  if(state.watchId!==null){feedback('أوقف رحلة GPS قبل المعاينة.',true);return;}
- if(!state.map||!state.token){feedback('شغّل الخريطة أولًا.',true);return;}
+ if(!state.token){feedback('فعّل مفتاح Mapbox العام أولًا للمقارنة.',true);return;}
  const from=$('preview-origin').value,origin=previewOrigin(from,state.home,state.work),dest=selectedDestination();
  if(!origin||!dest||!validRouteEndpoints(origin,dest.coordinates)){feedback('احفظ مكان الانطلاق والوجهة بحيث يختلفان.',true);return;}
  stopPreview();state.previewActive=true;state.previewFrom=from;state.avoidTolls=$('avoid-tolls').checked;
