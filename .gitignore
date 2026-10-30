@@ -1,0 +1,19 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node dependencies and generated output
+node_modules/
+coverage/
+dist/
+.cache/
+
+# Local configuration and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
