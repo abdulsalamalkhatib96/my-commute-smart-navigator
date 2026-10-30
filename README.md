@@ -122,3 +122,8 @@ Raw browser GPS timestamps are now checked against the actual measurement age an
 ## Optional foreground-only commute reminders and local privacy reset
 
 The user can set two daily reminders in Dubai time, enable them explicitly, and optionally request browser Notification permission through a user click. Reminder windows are de-duplicated per day. **No server-side scheduler or push subscription exists:** reminders do not reliably execute with the page closed or the device asleep. The app offers a separate, confirmed **delete all my local app data** action that removes its own storage prefix, including saved Mapbox public token and trips, without touching other websites' storage. PWA shell files may remain cached; they contain no private travel data.
+
+
+## Password-encrypted local portable backup (no cloud account)
+
+Use the backup panel to export/import saved places, nonsecret route settings and trip history together. The app encrypts browser-side with PBKDF2-SHA256 (210,000 iterations), a fresh random 16-byte salt, AES-256-GCM and a fresh 12-byte IV; no password is saved or sent to a server. The exported JSON excludes the Mapbox token, and import merges validated trips. A passphrase of at least 12 characters is required. Password recovery is impossible if the passphrase is lost. **This is an encrypted manual backup, not automatic cloud synchronization.** HTTPS/secure context is required for WebCrypto.

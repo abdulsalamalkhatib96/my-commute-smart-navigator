@@ -9,6 +9,8 @@ import {cameraForFix,canFollow} from './drive-mode.mjs';
 import {DEPARTURE_OFFSETS,predictedRouteUrl,departureOptions,departureComparison} from './departure-planner.mjs';
 import {validGpsTimestamp,routeCooldownMs} from './gps-policy.mjs';
 import {DEFAULT_REMINDERS,parseReminderSettings,dueReminders} from './reminder-core.mjs';
+import {encryptPrivateBackup,decryptPrivateBackup} from './secure-backup.mjs';
+import {validTrip} from './trip-store.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -109,6 +111,49 @@ async function askNotificationPermission(){
    const granted=await Notification.requestPermission();
    $('reminder-status').textContent=granted==='granted'?'تم السماح بإشعارات المتصفح. تظل التذكيرات مشروطة بأن تكون الصفحة قيد التشغيل.':'لم يتم منح صلاحية الإشعارات. ستظهر الرسالة داخل الموقع فقط.';
  }catch(error){feedback('تعذر طلب صلاحية الإشعارات: '+error.message,true);}
+}
+async function exportEncryptedData(){
+  const password=$('backup-password').value;
+  const btn=$('export-secure');
+  btn.disabled=true;
+  try{
+    const payload={version:1,profile:JSON.parse(exportProfile({home:state.home,work:state.work,settings:state.settings,avoidTolls:state.avoidTolls,destination:state.destination})),
+      trips:readTrips()};
+    const result=await encryptPrivateBackup(payload,password);
+    downloadFile(result,'my-commute-encrypted-backup.json','application/json');
+    feedback('تم تصدير نسخة مشفرة محليًا؛ احفظ كلمة المرور في مكان آمن.');
+  }catch(error){feedback('تعذر التصدير المشفر: '+error.message,true);}
+  finally{btn.disabled=false;$('backup-password').value='';}
+}
+async function importEncryptedData(event){
+  const file=event.target.files?.[0];if(!file)return;
+  const pass=$('backup-password').value;
+  try{
+    if(file.size>4000000)throw Error('الملف كبير جدًا');
+    const payload=await decryptPrivateBackup(await file.text(),pass);
+    if(payload?.version!==1||!Array.isArray(payload.trips)||payload.trips.length>3650||
+      payload.trips.some(t=>!validTrip(t)))throw Error('سجل الرحلات داخل النسخة غير صالح');
+    const profile=importProfile(JSON.stringify(payload.profile));
+    if(!confirm('استيراد نسخة مشفرة سيستبدل الأماكن والإعدادات ويدمج سجل الرحلات. متابعة؟'))return;
+    if(state.watchId!==null)stopNavigation();
+    if(state.previewActive)stopPreview();
+    const count=importTrips(JSON.stringify({version:1,trips:payload.trips}),state.settings.maxHistory);
+    for(const which of ['home','work']){
+      if(profile[which])setPlace(which,profile[which].coordinates,profile[which].name);
+      else{
+        state[which]=null;safeStorageRemove(which);
+        const key=which==='home'?'homeMarker':'workMarker';
+        state[key]?.remove();state[key]=null;$(which+'-details').textContent='غير محدد.';
+      }
+    }
+    state.settings=profile.settings;safeStorageSet('settings',JSON.stringify(state.settings));
+    state.destination=profile.destination;$('destination').value=profile.destination;
+    state.avoidTolls=profile.avoidTolls;safeStorageSet('avoidTolls',String(state.avoidTolls));$('avoid-tolls').checked=state.avoidTolls;
+    $('preview-origin').value=profile.destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
+    updateSettingsUI();renderHistory();renderRouteSummary();
+    feedback('استُعيدت الإعدادات والعناوين ودُمج '+count+' سجل رحلة. لم يُسترجع مفتاح Mapbox.');
+  }catch(error){feedback('تعذر استيراد النسخة المشفرة: '+error.message,true);}
+  finally{$('backup-password').value='';event.target.value='';}
 }
 function clearAllMyData(){
  if(!confirm('حذف البيت والعمل ومفتاح Mapbox والإعدادات والرحلات والتذكيرات من هذا المتصفح؟ لا يمكن التراجع.'))return;
@@ -596,6 +641,8 @@ async function searchPlace() {
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  $('export-secure').addEventListener('click',exportEncryptedData);
+  $('import-secure').addEventListener('change',importEncryptedData);
   $('reminder-save').addEventListener('click',saveReminders);
   $('reminder-permission').addEventListener('click',askNotificationPermission);
   $('clear-all-data').addEventListener('click',clearAllMyData);
