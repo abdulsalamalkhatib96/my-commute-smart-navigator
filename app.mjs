@@ -5,6 +5,7 @@ import {estimateSalik} from './salik-core.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
+import {cameraForFix,canFollow} from './drive-mode.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -15,7 +16,8 @@ const state = {
   lastRequestAt: 0, closest: null, offRouteCount: 0, pinMode: false, announced: new Set(),
   token: '', hasCentered: false, destination: 'home', work: null, workMarker: null,
   settings: {...DEFAULT_SETTINGS}, pendingRoute: null, trip: null, lastGpsFix: null,
-  lastRouteChange: 0, lastDecision: '—', savePinFor: 'home', manualRouteUntil: 0, previewActive:false, previewFrom:'work', avoidTolls:false, lastGoodAt:0
+  lastRouteChange: 0, lastDecision: '—', savePinFor: 'home', manualRouteUntil: 0, previewActive:false, previewFrom:'work', avoidTolls:false, lastGoodAt:0,
+  driveMode:false,lastCameraAt:0,followPausedUntil:0
 };
 const RECHECK_MS = 90_000;
 const MIN_RECHECK_MS = 35_000;
@@ -163,6 +165,7 @@ function initializeMap(token) {
       renderRoutesOnMap();
       setStatus('الخريطة جاهزة');
     });
+    map.on('dragstart',()=>{if(state.driveMode)state.followPausedUntil=Date.now()+45000;});
     map.on('error', e => {
       const msg = e?.error?.message || 'خطأ في خدمة الخرائط';
       if (/unauthorized|forbidden|access token|401|403/i.test(msg)) feedback('مفتاح Mapbox مرفوض. تحقق من صلاحيات الرمز والنطاق المسموح.',true);
@@ -186,6 +189,31 @@ function renderTrafficSummary(){
  const time=state.lastGoodAt?new Intl.DateTimeFormat('ar-AE',{hour:'2-digit',minute:'2-digit'}).format(new Date(state.lastGoodAt)):'—';
  label.textContent=(info.available?'مقاطع الازدحام المرتفع: '+info.heavyPercent+'٪ من الأطوال التي توفرت لها بيانات.':'تفاصيل الازدحام غير متاحة، وليس معنى ذلك أن الطريق خالٍ من الزحمة.')+' آخر تحديث ناجح: '+time+'.'+(state.avoidTolls?' طُلب تجنّب الطرق المدفوعة، دون ضمان خلو الطريق من الرسوم.':'')+(state.avoidTolls&&possibleTollViolation(route)?' تحذير: أبلغ المزوّد عن احتمال عبور رسوم.':'');
 }
+function updateDriveSummary(){
+  const selected=state.routes[state.selected],target=$('drive-summary');
+  if(!target)return;
+  target.textContent=selected?
+    'الوصول '+dubaiArrival(selected.duration)+' · '+formatMinutes(selected.duration)+' · '+(selected.distance/1000).toFixed(1)+' كم':
+    'لا توجد بيانات طريق حديثة';
+}
+function recenterDriver(){
+  if(!state.map||!state.position)return;
+  state.followPausedUntil=0;
+  const camera=cameraForFix(state.position,state.accuracy,state.heading);
+  if(camera){state.map.easeTo(camera);state.lastCameraAt=Date.now();}
+  else feedback('انتظر تحسن دقة GPS قبل تمركز الخريطة.',true);
+}
+function toggleDriveMode(enabled){
+  state.driveMode=Boolean(enabled);
+  document.body.classList.toggle('drive-mode',state.driveMode);
+  $('drive-mode-toggle').textContent=state.driveMode?'لوحة التحكم':'وضع خريطة القيادة';
+  $('drive-toolbar').hidden=!state.driveMode;
+  updateDriveSummary();
+  requestAnimationFrame(()=>{
+    state.map?.resize();
+    if(state.driveMode)recenterDriver();
+  });
+}
 function drawUserPosition() {
   if (!state.map || !state.position) return;
   if (!state.userMarker) {
@@ -194,6 +222,11 @@ function drawUserPosition() {
     state.userMarker = new mapboxgl.Marker({element:el}).setLngLat(state.position).addTo(state.map);
   } else state.userMarker.setLngLat(state.position);
   if (!state.hasCentered) {state.map.easeTo({center:state.position,zoom:13});state.hasCentered=true;}
+  const now=Date.now();
+  if(canFollow(now,state.lastCameraAt,state.followPausedUntil,{driveMode:state.driveMode,active:state.watchId!==null,hidden:document.hidden})) {
+    const camera=cameraForFix(state.position,state.accuracy,state.heading);
+    if(camera){state.map.easeTo(camera);state.lastCameraAt=now;}
+  }
 }
 function selectRoute(index) {
   if (!state.routes[index]) return;
@@ -223,7 +256,7 @@ function renderRouteSummary() {
     const time=document.createElement('b');time.textContent=formatMinutes(route.duration);
     button.append(label,time);button.onclick=()=>selectRoute(i);$('routes').appendChild(button);
   }
-  if (!selected) { $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';$('route-insight').textContent='قارن الطرق من الأزرار السريعة.';return; }
+  if (!selected) { $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';$('route-insight').textContent='قارن الطرق من الأزرار السريعة.';updateDriveSummary();return; }
   const difference=alternativeSummary(state.routes,state.selected);
   $('route-insight').textContent=!difference?'لا تتوفر مقارنة كافية.':
     difference.extraMinutes>0?'المسار المختار أبطأ من الأسرع بنحو '+difference.extraMinutes+' دقيقة.':
@@ -232,6 +265,7 @@ function renderRouteSummary() {
   $('eta').textContent=dubaiArrival(selected.duration);
   $('distance').textContent=`${(selected.distance/1000).toFixed(1)} كم`;
   $('fuel-estimate').textContent=formatAED(fuelCost(selected,state.settings));
+  updateDriveSummary();
 }
 function directionSymbol(indications) {
   const arrows={'straight':'↑','left':'↖','right':'↗','slight left':'↖','slight right':'↗','sharp left':'←','sharp right':'→','uturn':'↩','none':'·'};
@@ -401,6 +435,7 @@ function startNavigation() {
   speaker('بدأت الملاحة الذكية.');
 }
 function stopNavigation(arrived=false) {
+  if(state.driveMode)toggleDriveMode(false);
   finishTrip(arrived);
   state.previewActive=false;
   if (state.watchId!==null) navigator.geolocation.clearWatch(state.watchId);
@@ -438,6 +473,10 @@ async function searchPlace() {
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  $('drive-mode-toggle').addEventListener('click',()=>toggleDriveMode(!state.driveMode));
+  $('drive-exit').addEventListener('click',()=>toggleDriveMode(false));
+  $('drive-center').addEventListener('click',recenterDriver);
+  $('drive-waze').addEventListener('click',()=>$('open-waze').click());
   function fastPreview(destination){
     if(state.watchId!==null)stopNavigation();
     if(state.previewActive)stopPreview();

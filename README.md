@@ -95,3 +95,8 @@ Current development targets the **website/PWA**, not an Android or iOS app. The 
 ### New tests
 
 `node --test tests/*.test.mjs` now includes the traffic/endpoint helper tests. Live provider calls, real traffic coverage and road accuracy require a Mapbox key and device verification.
+
+
+## Full-screen browser map mode
+
+Use **وضع خريطة القيادة** to display a full-screen map and accessible exit, re-center and Waze buttons. With active GPS, the map can follow fresh fixes on the foreground page; manual drag pauses recentering for 45 seconds. The view is a browser convenience, not an approved primary navigator: GPS/speech may stop when the screen is locked, and route projection cannot guarantee correct lanes on stacked roads. Keep attention on the road and use Waze for dependable maneuvers.

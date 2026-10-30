@@ -58,6 +58,7 @@
         <label class="fieldlabel" for="destination">الوجهة</label>
         <select id="destination" aria-label="الوجهة"><option value="home">إلى البيت</option><option value="work">إلى العمل</option></select>
         <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إنهاء وحفظ الرحلة</button></div>
+        <button type="button" id="drive-mode-toggle" class="secondary full-width">وضع خريطة القيادة</button>
         <label class="switch"><input id="voice" type="checkbox" checked> إرشادات صوتية عندما يدعمها المتصفح</label>
         <div class="metrics"><div><span>الوصول المتوقع</span><strong id="eta">—</strong></div><div><span>المسافة المتبقية</span><strong id="distance">—</strong></div><div><span>الوقود المتوقع*</span><strong id="fuel-estimate">—</strong></div><div><span>آخر تحديث</span><strong id="last-update">—</strong></div></div><p class="help">* التقدير للوقود فقط؛ لا يشمل سالك والمواقف ولا يمثل تكلفة الرحلة الكاملة.</p>
         <p id="route-insight" class="traffic-details">قارن الطرق من الأزرار السريعة.</p>
@@ -101,6 +102,7 @@
     </section>
     <section class="map-panel" aria-label="خريطة الملاحة"><div id="map" class="map"><div class="placeholder">أدخل Mapbox Public token لإظهار الخريطة</div></div><div class="map-caption">المسارات حسب التغطية المتوفرة لدى Mapbox • يتطلب GPS اتصال HTTPS</div></section>
   </main>
+  <div id="drive-toolbar" class="drive-toolbar" hidden role="toolbar" aria-label="وضع خريطة القيادة"><strong id="drive-summary" aria-live="polite">بانتظار الطريق</strong><div class="drive-actions"><button type="button" id="drive-center">توسيط GPS</button><button type="button" id="drive-waze">الملاحة في Waze</button><button type="button" id="drive-exit">إغلاق الخريطة</button></div></div>
   <footer>لا تُرسل إحداثياتك إلى خادم تابع لنا. يرسل المتصفح الموقع المطلوب إلى Mapbox لحساب المسارات والبحث.</footer>
 </body>
 </html>
