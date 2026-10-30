@@ -77,6 +77,7 @@ function selectedDestination() {return state[state.destination];}
 function clearDepartureForecast(){
   state.departureForecastController?.abort();
   state.departureForecastController=null;
+  $('departure-check').disabled=false;
   $('departure-results').textContent='اضغط للمقارنة وفق توقّعات Mapbox التاريخية والمرور المتاح.';
 }
 async function predictDeparture(){
