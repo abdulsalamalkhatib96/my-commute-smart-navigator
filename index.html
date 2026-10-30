@@ -57,6 +57,14 @@
         <button type="button" id="settings-save" class="secondary">حفظ إعدادات القيادة</button>
         <p class="help">لا يتم إدراج رسوم سالك تلقائيًا لعدم وجود مصدر رسوم على مستوى كل مسار. وضع الأقل تكلفة يعني وقودًا أقل فقط.</p>
       </section>
+      <section class="panel">
+        <h2>حساب سالك اليدوي — غير مربوط بالمسار</h2>
+        <p class="help">أدخل عدد بوابات سالك التي تعرف أنك ستعبرها. الحساب حسب التوقيت الحالي في دبي، ولا يكتشف البوابات أو يستبدل فاتورة سالك الرسمية.</p>
+        <label>عدد البوابات المتوقعة <input id="salik-gates" type="number" min="0" max="20" step="1" placeholder="غير معروف"></label>
+        <label class="switch"><input id="salik-ramadan" type="checkbox"> فترة رمضان (السعر يحتاج تحققًا من الجدول الرسمي)</label>
+        <p>تقدير سالك: <strong id="salik-estimate">غير معروف</strong></p>
+        <p class="help">لا تدخل هذه القيمة في ترتيب الطرق لأن عدد البوابات لكل مسار غير متحقق.</p>
+      </section>
       <section class="panel highlight-panel">
         <h2>توجيه المسرب عند المخرج القادم</h2>
         <div id="maneuver" class="maneuver">بانتظار تحديد الطريق…</div>
