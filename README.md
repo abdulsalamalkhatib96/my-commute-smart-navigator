@@ -181,3 +181,8 @@ A manual **فحص اتصال Mapbox والمسارات** button calls the exact 
 ## ETA personalization from *completed* journeys
 
 A separate **وصلت — حفظ رحلة مكتملة** button distinguishes confirmed arrival from a cancelled/interrupted GPS session. Newly saved trips get a `completed` boolean. The personal ETA quality panel computes a robust median signed arrival error and MAD dispersion only after at least 5 *completed* trips for the selected destination. Legacy trips without an explicit completion flag and interrupted stops are excluded; personal adjustments are labeled historical and do not replace live Mapbox routing. A small dataset is insufficient for trustworthy forecast confidence, and browser location accuracy can affect results.
+
+
+## Degraded but functional text-only routing without WebGL
+
+A live external browser check confirmed Mapbox Directions could return routes and traffic even when the testing browser could not display WebGL map tiles. The site now saves the valid public token before checking WebGL availability and enables saved-place geocoding, route alternatives, traffic descriptions, estimated fuel, cost comparison and departure forecasting **without the map**. The route workflow updates textual traffic status independently of map source initialization. GPS driving guidance remains disabled in no-WebGL mode, with Waze handoff recommended for on-road use. This is a progressive enhancement, not a hidden fallback that pretends the map loaded.
