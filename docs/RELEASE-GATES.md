@@ -17,8 +17,10 @@ All items start **unverified** until supported by evidence. A green unit-test pi
 - [ ] Android project compiles under pinned dependencies and passes instrumentation tests
 - [ ] Android foreground trip service remains active when screen locks; notification and battery drain observed
 - [ ] Real GPS map-matching and off-route reroute validated on road, not merely route geometry projection
-- [ ] Localized text-to-speech for upcoming maneuvers, tested without touching screen
-- [ ] Lane cards bound to actual route progress, verified at interchanges
+- [x] Mapbox SDK voice observer wiring added in Android source
+- [ ] Localized text-to-speech tested without touching screen on real device
+- [x] SDK maneuver view code connected to route-progress observer
+- [ ] Lane cards verified at real interchanges
 - [ ] Audio focus, Bluetooth, call interruptions, tunnels and reduced connectivity handled
 - [ ] User stops navigation, location access is discontinued; no forgotten background session
 - [ ] Native destination bookmarks, cost mode and trip history integrated with app
@@ -27,9 +29,11 @@ All items start **unverified** until supported by evidence. A green unit-test pi
 ## Gate C — Personal intelligence / backend
 
 - [x] On-device fuel/time ranking and historical trip statistics foundation
-- [ ] Real Salik data from official/licensed source and time-of-day rules
+- [x] Published standard Salik hourly rules encoded and unit-tested for **manual gate count**
+- [ ] Real route-specific Salik gate detection, discount exceptions, Ramadan schedule verification
 - [ ] Calibrated ETA versus Waze over 20–30 trips with different departure windows
-- [ ] Historical departure recommendations with confidence bounds and explicit uncertainty
+- [x] Historical weekday/hour departure comparison with sample count and low/medium confidence labels (not a traffic forecast)
+- [ ] Calibrated forward-looking departure predictions with uncertainty
 - [ ] Authenticated Laravel sync and cross-device encrypted backups (if demanded)
 - [ ] Privacy policy, retention controls, data export/delete, billing guardrails and API usage budgets
 - [ ] Opt-in departure reminders and device-specific push notifications
