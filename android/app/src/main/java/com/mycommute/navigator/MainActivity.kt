@@ -224,6 +224,7 @@ class MainActivity : ComponentActivity() {
                     startedAtMs=System.currentTimeMillis()
                     navigating=true
                     navigator.setNavigationRoutes(ordered)
+                    if (hasLocationPermission()) navigator.startTripSession(withForegroundService = true)
                     status.text="الملاحة نشطة — المسارب حسب بيانات المناورات المتوفرة"
                 }
             })
