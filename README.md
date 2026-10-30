@@ -107,3 +107,8 @@ Use **وضع خريطة القيادة** to display a full-screen map and access
 Mapbox Directions driving-traffic supports `depart_at` time-dependent routing. The site compares departure now, +15, +30, +60 minutes using four user-initiated predictions. It displays **driving duration** and **clock-time arrival** separately. These are provider predictions based on historic/live-mixed traffic, not guaranteed future real-time conditions. Only saved-place origin/destination are supported, no background polling, and a two-minute request cooldown protects quota. Provider errors may yield partial comparisons. The feature needs a Mapbox public token and internet connection.
 
 Official reference: https://docs.mapbox.com/api/navigation/directions/
+
+
+## Automated HTTPS site deployment
+
+Every successful merge to `main` triggers the GitHub Pages workflow. One-time repository Pages setting (source: **GitHub Actions**) must be enabled by the repository administrator. If that setting is disabled, the workflow will fail without publishing; no valid website URL should be claimed until the deployment succeeds. `tests/release-pipeline.test.mjs` guards the JS import/cache/artifact list to prevent a broken deploy from missing modules.

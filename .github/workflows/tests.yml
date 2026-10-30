@@ -14,5 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check JavaScript modules
+        run: |
+          for file in *.mjs tests/*.mjs sw.js; do node --check "$file"; done
       - name: Run navigation helper tests
-        run: node --check app.mjs && node --check web-routing.mjs && node --test tests/*.test.mjs
+        run: node --test tests/*.test.mjs
