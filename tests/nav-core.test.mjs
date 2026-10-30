@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {haversine,isValidCoordinate,nearestOnLine,progressOnSteps,laneSummary,routeIsPlausible} from '../nav-core.mjs';
+import {haversine,isValidCoordinate,nearestOnLine,progressOnSteps,laneSummary,routeIsPlausible,safeGuidanceFix} from '../nav-core.mjs';
 
 test('haversine is zero for equal positions',()=>assert.equal(haversine([55,25],[55,25]),0));
 test('haversine correctly estimates 1 degree latitude',()=>assert.ok(Math.abs(haversine([55,25],[55,26])-111195)<100));
@@ -32,4 +32,12 @@ test('route validation does not accept empty or zero-duration routes',()=>{
 test('lane guidance does not steal lanes from a future intersection',()=>{
   const step={intersections:[{}, {lanes:[{valid:true,indications:['right']}]}]};
   assert.equal(laneSummary(step),null);
+});
+
+test('unsafe GPS or stale matches suppress experimental lane guidance',()=>{
+  assert.equal(safeGuidanceFix(15,5,3000),true);
+  assert.equal(safeGuidanceFix(80,5,3000),false);
+  assert.equal(safeGuidanceFix(15,100,3000),false);
+  assert.equal(safeGuidanceFix(15,5,30000),false);
+  assert.equal(safeGuidanceFix(NaN,5,3000),false);
 });
