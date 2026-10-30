@@ -7,7 +7,7 @@ export function directionsUrl(origin,destination,token,{avoidTolls=false}={}){
  if(!validRouteEndpoints(origin,destination))throw new Error('حدد نقطتي انطلاق ووصول مختلفتين.');
  if(typeof token!=='string'||!/^pk\.[A-Za-z0-9._-]+$/.test(token))throw new Error('مفتاح Mapbox العام غير صحيح.');
  const coord=p=>p.map(n=>n.toFixed(6)).join(',');
- const params=new URLSearchParams({alternatives:'true',steps:'true',overview:'full',geometries:'geojson',language:'ar',annotations:'congestion,distance,speed',access_token:token});
+ const params=new URLSearchParams({alternatives:'true',steps:'true',overview:'full',geometries:'geojson',language:'ar',annotations:'congestion,distance,speed',notifications:'all',access_token:token});
  if(avoidTolls)params.set('exclude','toll');
  return 'https://api.mapbox.com/directions/v5/mapbox/driving-traffic/'+coord(origin)+';'+coord(destination)+'?'+params;
 }
@@ -25,4 +25,12 @@ export function trafficSummary(route){
  levels.forEach((v,i)=>{if(!LEVELS.has(v)||v==='unknown')return;const weight=dist&&Number.isFinite(dist[i])&&dist[i]>=0?dist[i]:1;known+=weight;if(v==='heavy'||v==='severe')heavy+=weight;total++;});
  return {available:known>0,known,total,heavyPercent:known>0?Math.round(100*heavy/known):null};
 }
-export function possibleTollViolation(route){return Array.isArray(route?.notifications)&&route.notifications.some(n=>n?.subtype==='toll');}
+/** Mapbox v5 returns notifications on route *legs*, not the top-level route. */
+export function routeTollEvidence(route){
+ const legs=Array.isArray(route?.legs)?route.legs:[];
+ const notices=legs.flatMap(leg=>Array.isArray(leg?.notifications)?leg.notifications:[]);
+ const toll=notices.filter(n=>n?.subtype==='toll');
+ return {reported:toll.length>0,avoidanceFailed:toll.some(n=>n?.type==='violation'),count:toll.length};
+}
+export function possibleTollViolation(route){return routeTollEvidence(route).reported;}
+

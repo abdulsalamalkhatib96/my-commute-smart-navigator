@@ -18,6 +18,16 @@ export function salikRateAt(date,{ramadan=false}={}) {
   if((t>=6&&t<10)||(t>=16&&t<20))return 6;
   return 4;
 }
+/** 2026-06-01 UAE government notes 5% VAT on toll transactions; not clear here whether
+ * displayed gate tariffs are tax-inclusive, so model it only as an optional scenario. */
+export function salikVatScenario(gates,date,options={}) {
+  const base=estimateSalik(gates,date,options);
+  if(!base)return null;
+  const dt=date instanceof Date?date:new Date(date);
+  const applicable=dt.getTime()>=Date.parse('2026-05-31T20:00:00Z'); // June 1 00:00 Dubai
+  const candidateVAT=applicable?Math.round(base.aed*0.05*100)/100:0;
+  return {...base,vatIfAdditional:candidateVAT,totalIfAdditional:Math.round((base.aed+candidateVAT)*100)/100,vatApplicable:applicable};
+}
 export function estimateSalik(gates,date,options={}) {
   if(!Number.isInteger(gates)||gates<0||gates>20)return null;
   const rate=salikRateAt(date,options);

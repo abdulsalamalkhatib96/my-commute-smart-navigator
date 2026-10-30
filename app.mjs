@@ -1,9 +1,9 @@
 import {haversine, isValidCoordinate, progressOnSteps, laneSummary, formatMinutes, routeIsPlausible, safeGuidanceFix} from './nav-core.mjs';
 import {DEFAULT_SETTINGS, normalizeSettings, fuelCost, chooseRoute, tripStats, departureBuckets, formatAED} from './decision-core.mjs';
 import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} from './trip-store.mjs';
-import {estimateSalik} from './salik-core.mjs';
+import {estimateSalik,salikVatScenario} from './salik-core.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
-import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation} from './web-routing.mjs';
+import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation,routeTollEvidence} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
 import {cameraForFix,canFollow} from './drive-mode.mjs';
 import {DEPARTURE_OFFSETS,predictedRouteUrl,departureOptions,departureComparison} from './departure-planner.mjs';
@@ -256,8 +256,13 @@ function updateSettingsUI() {
 function updateManualToll() {
   const raw=$('salik-gates').value;
   const gates=Number(raw);
-  const estimate=raw.trim()===''?null:estimateSalik(gates,new Date(),{ramadan:$('salik-ramadan').checked});
-  $('salik-estimate').textContent=estimate===null?'غير معروف / يحتاج مراجعة':`${estimate.aed.toFixed(2)} د.إ (${estimate.crossings} بوابة × ${estimate.rate} د.إ)`;
+  const crossing=$('salik-crossing-time').value.trim();
+  const date=crossing?new Date(crossing+':00+04:00'):new Date();
+  const estimate=raw.trim()===''?null:salikVatScenario(gates,date,{ramadan:$('salik-ramadan').checked});
+  $('salik-estimate').textContent=estimate===null?'غير معروف / يحتاج مراجعة':`${estimate.aed.toFixed(2)} د.إ رسوم أساسية (${estimate.crossings} × ${estimate.rate})`;
+  $('salik-vat').textContent=estimate===null?'رسوم VAT غير معروفة.':estimate.vatApplicable?
+    `في حال إضافة VAT بنسبة 5% خارج التعرفة: +${estimate.vatIfAdditional.toFixed(2)} د.إ، والمجموع ${estimate.totalIfAdditional.toFixed(2)} د.إ. تحقق من الفاتورة الرسمية لمعرفة شمول التعرفة للضريبة.`:
+    'لم تُطبق فرضية VAT على هذا التاريخ.';
 }
 function saveSettings() {
   state.settings=normalizeSettings({mode:$('mode').value,
@@ -418,7 +423,10 @@ function renderRouteSummary() {
     const km=document.createElement('small');km.textContent=`${(route.distance/1000).toFixed(1)} كم`;
     const cost=document.createElement('small');cost.textContent=`وقود تقديري ${formatAED(fuelCost(route,state.settings))} · دون سالك` ;const congestion=document.createElement('small');const summary=trafficSummary(route);
     congestion.textContent=summary.available?'ازدحام مرتفع: '+summary.heavyPercent+'٪ من الأجزاء المقاسة':'تفاصيل الازدحام غير متاحة';
-    label.append(km,cost,congestion);
+    const toll=document.createElement('small');const evidence=routeTollEvidence(route);
+    toll.textContent=evidence.reported?'⚠ بيانات Mapbox تشير إلى طريق مدفوع؛ عدد بوابات سالك غير معروف.':
+       'لا توجد إشارة رسوم من Mapbox؛ لا يعني ذلك أن الطريق بلا سالك.';
+    label.append(km,cost,congestion,toll);
     const time=document.createElement('b');time.textContent=formatMinutes(route.duration);
     button.append(label,time);button.onclick=()=>selectRoute(i);$('routes').appendChild(button);
   }
@@ -701,6 +709,7 @@ function wireEvents() {
   $('preview-origin').addEventListener('change',()=>{clearDepartureForecast();if(state.previewActive)stopPreview();state.previewFrom=$('preview-origin').value;});
   $('avoid-tolls').addEventListener('change',()=>{clearDepartureForecast();state.avoidTolls=$('avoid-tolls').checked;safeStorageSet('avoidTolls',String(state.avoidTolls));if(state.watchId!==null||state.previewActive){state.lastRequestAt=0;state.routes=[];state.pendingRoute=null;requestRoutes(true);}});
   $('salik-gates').addEventListener('input',updateManualToll);
+  $('salik-crossing-time').addEventListener('change',updateManualToll);
   $('salik-ramadan').addEventListener('change',updateManualToll);
   $('destination').addEventListener('change',()=>{
     clearDepartureForecast();
