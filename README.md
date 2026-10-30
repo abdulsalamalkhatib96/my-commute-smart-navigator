@@ -10,14 +10,16 @@ Arabic-first, local-first journey planning and traffic-aware route comparison fo
 | Traffic-aware alternative routes and ETA (Mapbox) | Implemented, requires public Mapbox token and network |
 | Fast / balanced / fuel-economy route policy with 2-poll hysteresis | Implemented and tested as pure JS |
 | Manual selected route, approximately retained across refreshes | Implemented, route identity is heuristic |
-| Fuel estimate with user-set consumption, AED/L and value of time | Implemented; **tolls/parking excluded** |
+| Fuel estimate with user-set consumption, AED/L and value of time | Implemented; tolls/parking excluded from route ranking |
+| Dubai Salik reference rate from manually entered gate count | Implemented; **not route-aware**, Ramadan schedule intentionally unknown |
+| Historical departure comparison with sample counts | Implemented; retrospective only, **not a live traffic forecast** |
 | Local-only trip history, ETA error, weekday/hour historical observations | Implemented; requires actual completed trips |
 | History JSON export/import, CSV export, clear history | Implemented |
 | Lane arrows for available upcoming maneuver | Experimental; **not fastest physical lane**, may be unavailable |
 | Waze deep-link for dependable turn-by-turn | Implemented; Waze chooses its own path |
-| Android native Nav SDK base with map-matched location and routing | Source foundation only; **not compiled, not field-tested** |
-| Audio voice navigation in locked-screen native app | NOT implemented/verified |
-| Real-time lane speed, official Salik auto-pricing | NOT available/implemented |
+| Android native Nav SDK with saved coordinates, Mapbox maneuver view and audio-guidance wiring | Source updated; **not compiled, not field-tested** |
+| Android Mapbox audio guidance + foreground GPS service code | Implemented as SDK wiring; **not compiled/verified on device** |
+| Real-time lane speeds / route-specific Salik detection | NOT available/implemented |
 | Cloud sync, Laravel server, user accounts, iOS | NOT implemented |
 
 ## Run the web app
@@ -67,3 +69,11 @@ See [`docs/RELEASE-GATES.md`](docs/RELEASE-GATES.md) for reproducible field acce
 - https://docs.mapbox.com/android/navigation/guides/install/
 - https://www.mapbox.com/pricing
 - https://docs.mapbox.com/help/glossary/access-token/
+
+
+## October 30 follow-up delivery
+- Web: a separate `salik-core.mjs` applies published Dubai standard hourly gate pricing to **a manually entered gate count**, without misrepresenting route-specific toll detection. Ramadan is explicitly marked unknown.
+- Web: `departure-core.mjs` compares matching Dubai weekday/hour trip-history samples with a minimum sample size, clearly labeled retrospective; it does not infer future traffic.
+- Native: the Mapbox maneuver view and SDK-managed voice guidance are now connected to route progress; home/work bookmarks are stored locally; explicit Stop clears routes and stops the GPS session. These are source-level changes, **not evidence of successful Android build or road readiness**.
+- A separate manually triggered GitHub Actions workflow `android-build.yml` can compile and retain a short-lived APK if the repository owner configures `MAPBOX_DOWNLOADS_TOKEN` and `MAPBOX_PUBLIC_TOKEN` as Actions secrets. Never send secret tokens in chat or commit them.
+- Web unit tests are run in CI. Android compilation, notification behavior, voice language, background operation, map matching and safety require SDK credentials plus a real device.

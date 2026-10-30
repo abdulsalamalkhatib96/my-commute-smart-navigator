@@ -1,6 +1,8 @@
 import {haversine, isValidCoordinate, progressOnSteps, laneSummary, formatMinutes, routeIsPlausible} from './nav-core.mjs';
 import {DEFAULT_SETTINGS, normalizeSettings, fuelCost, chooseRoute, tripStats, departureBuckets, formatAED} from './decision-core.mjs';
 import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} from './trip-store.mjs';
+import {estimateSalik} from './salik-core.mjs';
+import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -70,12 +72,18 @@ function updateSettingsUI() {
   $('fuel-price').value=state.settings.fuelPriceAED;
   $('time-value').value=state.settings.valueOfTimeAEDPerHour;
 }
+function updateManualToll() {
+  const raw=$('salik-gates').value;
+  const gates=Number(raw);
+  const estimate=raw.trim()===''?null:estimateSalik(gates,new Date(),{ramadan:$('salik-ramadan').checked});
+  $('salik-estimate').textContent=estimate===null?'غير معروف / يحتاج مراجعة':`${estimate.aed.toFixed(2)} د.إ (${estimate.crossings} بوابة × ${estimate.rate} د.إ)`;
+}
 function saveSettings() {
   state.settings=normalizeSettings({mode:$('mode').value,
     litersPer100km:$('consumption').value,fuelPriceAED:$('fuel-price').value,
     valueOfTimeAEDPerHour:$('time-value').value});
   safeStorageSet('settings',JSON.stringify(state.settings));
-  updateSettingsUI(); renderRouteSummary();renderHistory();
+  updateSettingsUI(); renderRouteSummary();renderHistory();updateManualToll();
   feedback('حُفظت الإعدادات على هذا الجهاز. التكلفة لا تشمل سالك أو المواقف.');
 }
 function renderHistory() {
@@ -83,11 +91,7 @@ function renderHistory() {
   $('trip-count').textContent=String(stats.count);
   $('median-duration').textContent=stats.medianSeconds===null?'—':formatMinutes(stats.medianSeconds);
   $('eta-error').textContent=stats.medianEtaErrorSeconds===null?'—':formatMinutes(stats.medianEtaErrorSeconds);
-  const buckets=departureBuckets(trips,state.destination);
-  const best=buckets.sort((a,b)=>a.medianSeconds-b.medianSeconds)[0];
-  $('historical').textContent=best
-    ? `من سجلك السابق: الساعة ${best.key.split('-')[1]} كان وسيط الرحلة ${formatMinutes(best.medianSeconds)} (${best.count} رحلات). هذا ليس توقعًا حيًا.`
-    : 'نحتاج 3 رحلات مكتملة على الأقل في نفس اليوم والساعة لعرض مقارنة تاريخية.';
+  $('historical').textContent=formatHistoricalAdvice(historicalDepartureAdvice(trips,state.destination));
 }
 function finishTrip(arrived=false) {
   if(!state.trip)return;
@@ -381,6 +385,8 @@ async function searchPlace() {
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  $('salik-gates').addEventListener('input',updateManualToll);
+  $('salik-ramadan').addEventListener('change',updateManualToll);
   $('destination').addEventListener('change',()=>{
     if(state.watchId!==null)stopNavigation();
     state.destination=$('destination').value;renderHistory();renderRouteSummary();
@@ -434,7 +440,7 @@ wireEvents();
 state.home=readPlace('home');state.work=readPlace('work');state.settings=readSettings();
 if(state.home) $('home-details').textContent=`${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
 if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoordinate(state.work.coordinates)}`;
-updateSettingsUI();renderHistory();
+updateSettingsUI();renderHistory();updateManualToll();
 const token=safeStorageGet('token');
 if(token){$('token').value=token;window.addEventListener('load',()=>initializeMap(token));}
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));

@@ -17,4 +17,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("com.mapbox.navigationcore:android-ndk27:3.33.1")
     implementation("com.mapbox.navigationcore:ui-maps:3.33.1")
+    implementation("com.mapbox.navigationcore:tripdata:3.33.1")
+    implementation("com.mapbox.navigationcore:ui-components:3.33.1")
+    implementation("com.mapbox.navigationcore:voice:3.33.1")
 }

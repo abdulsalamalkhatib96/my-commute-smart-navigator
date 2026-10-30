@@ -1,0 +1,49 @@
+name: Android SDK build (requires Mapbox tokens)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Require Mapbox tokens without exposing values
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+        run: |
+          test -n "$MAPBOX_DOWNLOADS_TOKEN" || { echo "::error::Set MAPBOX_DOWNLOADS_TOKEN in repository secrets"; exit 1; }
+          test -n "$MAPBOX_PUBLIC_TOKEN" || { echo "::error::Set MAPBOX_PUBLIC_TOKEN in repository secrets"; exit 1; }
+          case "$MAPBOX_PUBLIC_TOKEN" in pk.*) ;; *) echo "::error::Public token must begin pk."; exit 1;; esac
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          target = Path('android/app/src/main/res/values/strings.xml')
+          s = target.read_text()
+          s = s.replace('YOUR_MAPBOX_PUBLIC_TOKEN', os.environ['MAPBOX_PUBLIC_TOKEN'])
+          target.write_text(s)
+          PY
+      - name: Install Android compile SDK
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+      - name: Build debug APK
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+        run: gradle -p android --no-daemon :app:assembleDebug
+      - name: Upload APK (private build artifact)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-commute-android-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
