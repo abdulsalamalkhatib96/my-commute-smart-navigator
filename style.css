@@ -28,3 +28,20 @@ select:focus-visible,input[type=number]:focus-visible{outline:3px solid #deab45;
 .traffic-dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0}
 .traffic-dot.free{background:#21a777}.traffic-dot.medium{background:#f5b634}.traffic-dot.heavy{background:#ec7734}.traffic-dot.severe{background:#d83d40}.traffic-dot.unknown{background:#8295a4}
 @media(max-width:520px){.preview-panel{padding:16px}#preview-route,#refresh-route{flex:1}}
+
+/* Optional full-screen web map mode; browser background GPS is NOT promised. */
+.drive-toolbar[hidden]{display:none!important}
+.drive-mode{overflow:hidden}
+.drive-mode .topbar,.drive-mode .quick-journey,.drive-mode .connection-status,.drive-mode footer{display:none}
+.drive-mode .map-panel{position:fixed;inset:0;top:0;width:100vw;height:100dvh;min-height:0;z-index:40;border-radius:0;border:0}
+.drive-mode .map{height:100%}
+.drive-mode .map-caption{display:none}
+.drive-mode .dashboard>.panel:not(.highlight-panel){display:none}
+.drive-mode .dashboard .highlight-panel{position:fixed;z-index:60;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;max-width:670px;max-height:42dvh;overflow:auto;box-shadow:0 8px 22px #001b31aa}
+.drive-mode .dashboard .highlight-panel .help{font-size:.75rem}
+.drive-toolbar{display:none}
+.drive-mode .drive-toolbar{display:flex;position:fixed;z-index:70;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:12px;max-width:720px;flex-direction:column;gap:10px;padding:14px;border-radius:17px;background:#fff;box-shadow:0 8px 35px #001b31aa}
+.drive-actions{display:flex;flex-wrap:wrap;gap:8px}
+.drive-actions button{flex:1;min-height:52px;white-space:normal}
+#drive-summary{font-size:1rem;color:#153247}
+@media(min-width:950px){.drive-mode .dashboard .highlight-panel{left:22px;right:auto;width:450px}.drive-mode .drive-toolbar{left:22px;right:auto;width:450px}}

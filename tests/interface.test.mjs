@@ -19,3 +19,8 @@ test('not claiming lane-level speed or salik in UI',()=>{
   assert.match(html,/لا يشمل سالك/);
   assert.match(html,/وليس أنه الأسرع/);
 });
+
+test('full screen map mode is accessible with exit and Waze handoff',()=>{
+ for(const id of ['drive-mode-toggle','drive-toolbar','drive-summary','drive-center','drive-waze','drive-exit'])assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(js,/toggleDriveMode/);
+});
