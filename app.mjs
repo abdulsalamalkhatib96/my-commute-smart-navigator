@@ -3,6 +3,7 @@ import {DEFAULT_SETTINGS, normalizeSettings, fuelCost, chooseRoute, tripStats, d
 import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} from './trip-store.mjs';
 import {estimateSalik,salikVatScenario} from './salik-core.mjs';
 import {SALIK_GATES,priceCrossings,priceChargedCount} from './salik-ledger.mjs';
+import {compareTotalRouteCosts} from './route-cost-core.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation,routeTollEvidence} from './web-routing.mjs';
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
@@ -26,7 +27,8 @@ const state = {
   settings: {...DEFAULT_SETTINGS}, pendingRoute: null, trip: null, lastGpsFix: null,
   lastRouteChange: 0, lastDecision: '—', savePinFor: 'home', manualRouteUntil: 0, previewActive:false, previewFrom:'work', avoidTolls:false, lastGoodAt:0,
   driveMode:false,lastCameraAt:0,followPausedUntil:0,
-  departureForecastAt:0,departureForecastController:null,lastAcceptedGpsAt:0
+  departureForecastAt:0,departureForecastController:null,lastAcceptedGpsAt:0,
+  routeChargeableCounts:[]
 };
 const RECHECK_MS = 90_000;
 const MIN_RECHECK_MS = 35_000;
@@ -503,6 +505,18 @@ function routeName(route,index) {
   const roads=[...new Set((route.legs?.[0]?.steps||[]).map(step=>step.name).filter(Boolean))];
   return roads.slice(0,2).join(' / ') || (index === 0 ? 'الطريق المقترح' : `بديل ${index}`);
 }
+function renderRouteFinancialTotals(){
+ const report=compareTotalRouteCosts(state.routes,state.routeChargeableCounts,state.settings,new Date(),{ramadan:$('salik-ramadan').checked});
+ for(const item of report.items){
+   const total=$('routes').querySelector('[data-cost-route="'+item.index+'"]');
+   if(total)total.textContent=item.totalAED===null?'تكلفة الوقود + سالك: غير معروفة حتى تُدخل العبور المحاسَب':
+      'وقود '+item.fuelAED.toFixed(2)+' + سالك '+item.tollAED.toFixed(2)+' = '+item.totalAED.toFixed(2)+' د.إ';
+ }
+ $('route-cost-insight').textContent=!report.items.length?'لا توجد بدائل للمقارنة.':
+   !report.complete?'أدخل عدد العبورات المحاسَب عليها لكل بديل للمقارنة الشاملة؛ المجهول ليس صفرًا.':
+   'الأقل في التكلفة المعروفة: البديل '+(report.cheapest.index+1)+' بمبلغ '+report.cheapest.totalAED.toFixed(2)+
+   ' د.إ (وقود + سالك، دون مواقف أو تكاليف أخرى).';
+}
 function renderRouteSummary() {
   const selected=state.routes[state.selected];
   $('routes').replaceChildren();
@@ -520,7 +534,21 @@ function renderRouteSummary() {
     label.append(km,cost,congestion,toll);
     const time=document.createElement('b');time.textContent=formatMinutes(route.duration);
     button.append(label,time);button.onclick=()=>selectRoute(i);$('routes').appendChild(button);
+    const entry=document.createElement('div');entry.className='route-cost-entry';
+    const costLabel=document.createElement('label');costLabel.textContent='العبورات المحاسَب عليها لهذا البديل (يدوي): ';
+    const gateInput=document.createElement('input');gateInput.type='number';gateInput.min='0';gateInput.max='20';gateInput.step='1';
+    gateInput.setAttribute('aria-label','عدد عبورات سالك المحاسَب عليها للبديل '+(i+1));
+    gateInput.placeholder='غير معروف';
+    gateInput.value=Number.isInteger(state.routeChargeableCounts[i])?String(state.routeChargeableCounts[i]):'';
+    gateInput.addEventListener('input',()=>{
+      const value=gateInput.value.trim();
+      state.routeChargeableCounts[i]=value===''?null:(Number.isInteger(Number(value))&&Number(value)>=0&&Number(value)<=20?Number(value):null);
+      renderRouteFinancialTotals();
+    });
+    const output=document.createElement('small');output.dataset.costRoute=String(i);output.setAttribute('aria-live','polite');
+    costLabel.append(gateInput);entry.append(costLabel,output);$('routes').appendChild(entry);
   }
+  renderRouteFinancialTotals();
   if (!selected) { $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';$('route-insight').textContent='قارن الطرق من الأزرار السريعة.';updateDriveSummary();return; }
   const difference=alternativeSummary(state.routes,state.selected);
   $('route-insight').textContent=!difference?'لا تتوفر مقارنة كافية.':
@@ -625,6 +653,7 @@ async function requestRoutes(force=false,confirmedOffRoute=false) {
     state.pendingRoute=decision.pending;state.lastDecision=decision.reason;
     if(previous && decision.reason==='better-route') speaker('وجدت طريقًا أسرع بشكل ملحوظ. تحقق من إمكانية تغيير الطريق بأمان.');
     state.routes=valid;
+    state.routeChargeableCounts=[]; // New response may reorder/change roads; never reuse unverified counts.
     state.selected=decision.index;
     state.lastGoodAt=Date.now();showConnectionState();
     state.offRouteCount=0;
@@ -672,6 +701,7 @@ function onPositionError(error) {
   if (error.code===1) stopNavigation();
 }
 function stopPreview(){
+ state.routeChargeableCounts=[];
  state.previewActive=false;if(state.timer!==null)clearInterval(state.timer);state.timer=null;
  state.controller?.abort();state.routes=[];state.selected=0;state.pendingRoute=null;state.manualRouteUntil=0;state.lastRequestAt=0;state.lastGoodAt=0;
  renderRouteSummary();renderRoutesOnMap();renderTrafficSummary();
@@ -710,6 +740,7 @@ function stopNavigation(arrived=false) {
   state.watchId=null;
   if(state.timer!==null) clearInterval(state.timer);
   state.timer=null;state.controller?.abort();
+  state.routeChargeableCounts=[];
   state.routes=[];state.selected=0;state.position=null;state.closest=null;state.pendingRoute=null;state.lastGpsFix=null;state.manualRouteUntil=0;
   state.announced.clear();state.offRouteCount=0;state.lastAcceptedGpsAt=0;state.fixAt=0;
   if (state.userMarker){state.userMarker.remove();state.userMarker=null;}
