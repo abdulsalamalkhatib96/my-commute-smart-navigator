@@ -2,6 +2,14 @@
 export const EARTH_RADIUS_M = 6371008.8;
 export const toRad = degree => degree * Math.PI / 180;
 
+/** Conservative browser-only guard; this still cannot distinguish parallel lanes or stacked roads. */
+export function safeGuidanceFix(gpsAccuracyMeters,routeOffsetMeters,fixAgeMs){
+  return Number.isFinite(gpsAccuracyMeters)&&gpsAccuracyMeters>=0&&gpsAccuracyMeters<=60&&
+    Number.isFinite(routeOffsetMeters)&&routeOffsetMeters>=0&&routeOffsetMeters<=60&&
+    Number.isFinite(fixAgeMs)&&fixAgeMs>=0&&fixAgeMs<=20000;
+}
+
+
 export function haversine(a, b) {
   const [lng1, lat1] = a.map(toRad);
   const [lng2, lat2] = b.map(toRad);

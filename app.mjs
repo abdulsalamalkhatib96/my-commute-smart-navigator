@@ -1,4 +1,4 @@
-import {haversine, isValidCoordinate, progressOnSteps, laneSummary, formatMinutes, routeIsPlausible} from './nav-core.mjs';
+import {haversine, isValidCoordinate, progressOnSteps, laneSummary, formatMinutes, routeIsPlausible, safeGuidanceFix} from './nav-core.mjs';
 import {DEFAULT_SETTINGS, normalizeSettings, fuelCost, chooseRoute, tripStats, departureBuckets, formatAED} from './decision-core.mjs';
 import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} from './trip-store.mjs';
 import {estimateSalik} from './salik-core.mjs';
@@ -256,6 +256,11 @@ function updateGuidance() {
   const progress=progressOnSteps(state.position,steps);
   if (!progress) { $('maneuver').textContent='لا توجد بيانات توجيه كافية.';return; }
   state.closest=progress;
+  if(!safeGuidanceFix(state.accuracy,progress.lateralMeters,Date.now()-state.fixAt)) {
+    $('maneuver').textContent='الموقع غير دقيق أو بعيد عن المسار؛ أُوقفت إرشادات المسارب والصوت مؤقتًا.';
+    $('lanes').textContent='تحقق من إشارات الطريق حتى تتحسن إشارة GPS.';
+    return;
+  }
   const upcoming=steps[progress.stepIndex+1];
   if (!upcoming) { $('maneuver').textContent='اقتربت من وجهتك.';return; }
   const ahead=Math.round(progress.remainingMeters);
@@ -281,7 +286,7 @@ function updateGuidance() {
     }
   }
 }
-async function requestRoutes(force=false) {
+async function requestRoutes(force=false,confirmedOffRoute=false) {
   const destination=selectedDestination(), driving=state.watchId!==null;
   const origin=driving?state.position:state.previewActive?previewOrigin(state.previewFrom,state.home,state.work):null;
   if(!state.token||!destination||!origin)return;
@@ -306,7 +311,7 @@ async function requestRoutes(force=false) {
     if (!valid.length) throw new Error('لم يتم العثور على طريق قابل للقيادة');
     if(state.controller!==controller)return; // stale response must never overwrite a newer route
     const previous=state.routes[state.selected]||null;
-    const offRoute=state.offRouteCount>=3;
+    const offRoute=confirmedOffRoute || state.offRouteCount>=3;
     let decision=chooseRoute(valid,previous,state.pendingRoute,state.settings,state.routes.length===0||offRoute);
     if(!offRoute && Date.now()<state.manualRouteUntil && previous){
       const manual=valid.findIndex(route=>route===previous);
@@ -353,7 +358,7 @@ function onPosition(position) {
     else state.offRouteCount=0;
     if (state.offRouteCount>=3 && Date.now()-state.lastRequestAt>=MIN_RECHECK_MS) {
       feedback('يبدو أنك خرجت عن المسار: يجري إعادة حساب الطريق.');
-      state.offRouteCount=0;requestRoutes(true);return;
+      state.offRouteCount=0;requestRoutes(true,true);return;
     }
   }
   if (!state.routes.length) requestRoutes(true);
