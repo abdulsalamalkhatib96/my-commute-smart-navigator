@@ -8,6 +8,7 @@ import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} 
 import {cameraForFix,canFollow} from './drive-mode.mjs';
 import {DEPARTURE_OFFSETS,predictedRouteUrl,departureOptions,departureComparison} from './departure-planner.mjs';
 import {validGpsTimestamp,routeCooldownMs} from './gps-policy.mjs';
+import {DEFAULT_REMINDERS,parseReminderSettings,dueReminders} from './reminder-core.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -75,6 +76,58 @@ function setPlace(which, coordinates, name=which==='home'?'البيت':'العم
   else if(state.previewActive&&(state.destination===which||state.previewFrom===which)){state.lastRequestAt=0;state.pendingRoute=null;state.routes=[];requestRoutes(true);}
 }
 function selectedDestination() {return state[state.destination];}
+let reminderSettings={...DEFAULT_REMINDERS};
+let firedReminders=[];
+function readReminders(){
+ try{return parseReminderSettings(JSON.parse(safeStorageGet('reminder-settings')||'{}'));}
+ catch{return {...DEFAULT_REMINDERS};}
+}
+function checkReminders(){
+ const now=new Date();
+ for(const reminder of dueReminders(reminderSettings,now,firedReminders)){
+   firedReminders.push(reminder.key);
+   firedReminders=firedReminders.slice(-20);
+   safeStorageSet('reminder-fired',JSON.stringify(firedReminders));
+   const title=reminder.destination==='home'?'تذكير العودة إلى البيت':'تذكير الذهاب للعمل';
+   feedback(title+' · افتح مقارنة الطرق لتعرف وضع الازدحام.');
+   if(reminderSettings.enabled&&'Notification' in window&&Notification.permission==='granted'){
+     try{const notice=new Notification('My Commute: '+title,{body:'افتح الموقع لمقارنة الطرق والمرور قبل المغادرة.',tag:'mycommute-'+reminder.destination});notice.onclick=()=>{window.focus();notice.close();};}
+     catch{} 
+   }
+ }
+}
+function saveReminders(){
+ reminderSettings=parseReminderSettings({enabled:$('reminder-enabled').checked,workTime:$('reminder-work').value,homeTime:$('reminder-home').value});
+ safeStorageSet('reminder-settings',JSON.stringify(reminderSettings));
+ $('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;
+ $('reminder-status').textContent=reminderSettings.enabled?'التذكير مفعّل أثناء توفر الصفحة. الإشعارات تعتمد على صلاحية المتصفح.':'التذكير متوقف.';
+ feedback('تم حفظ أوقات التذكير على هذا المتصفح.');checkReminders();
+}
+async function askNotificationPermission(){
+ if(!('Notification' in window)){feedback('هذا المتصفح لا يدعم الإشعارات.',true);return;}
+ try{
+   const granted=await Notification.requestPermission();
+   $('reminder-status').textContent=granted==='granted'?'تم السماح بإشعارات المتصفح. تظل التذكيرات مشروطة بأن تكون الصفحة قيد التشغيل.':'لم يتم منح صلاحية الإشعارات. ستظهر الرسالة داخل الموقع فقط.';
+ }catch(error){feedback('تعذر طلب صلاحية الإشعارات: '+error.message,true);}
+}
+function clearAllMyData(){
+ if(!confirm('حذف البيت والعمل ومفتاح Mapbox والإعدادات والرحلات والتذكيرات من هذا المتصفح؟ لا يمكن التراجع.'))return;
+ if(state.watchId!==null)stopNavigation();
+ if(state.previewActive)stopPreview();
+ state.departureForecastController?.abort();
+ state.controller?.abort();
+ try{
+   for(let i=localStorage.length-1;i>=0;i--){const key=localStorage.key(i);if(key?.startsWith('mycommute.smartnav.'))localStorage.removeItem(key);}
+ }catch{feedback('المتصفح منع حذف بعض البيانات المحلية.',true);return;}
+ state.home=null;state.work=null;state.token='';state.routes=[];state.settings={...DEFAULT_SETTINGS};reminderSettings={...DEFAULT_REMINDERS};firedReminders=[];
+ state.homeMarker?.remove();state.homeMarker=null;state.workMarker?.remove();state.workMarker=null;
+ $('home-details').textContent='غير محدد.';$('work-details').textContent='غير محدد.';$('token').value='';
+ $('reminder-enabled').checked=false;$('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;
+ $('reminder-status').textContent='التذكيرات متوقفة.';updateSettingsUI();renderHistory();renderRouteSummary();
+ state.map?.remove();state.map=null;$('map').textContent='تم حذف بياناتك المحلية. أعد إعداد Mapbox للبدء.';
+ feedback('حُذفت البيانات المحلية للتطبيق من هذا المتصفح. قد تبقى ملفات التطبيق غير الشخصية في ذاكرة PWA.');
+}
+
 function clearDepartureForecast(){
   state.departureForecastController?.abort();
   state.departureForecastController=null;
@@ -543,6 +596,11 @@ async function searchPlace() {
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  $('reminder-save').addEventListener('click',saveReminders);
+  $('reminder-permission').addEventListener('click',askNotificationPermission);
+  $('clear-all-data').addEventListener('click',clearAllMyData);
+  window.setInterval(checkReminders,30000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReminders();});
   $('drive-mode-toggle').addEventListener('click',()=>toggleDriveMode(!state.driveMode));
   $('drive-exit').addEventListener('click',()=>toggleDriveMode(false));
   $('drive-center').addEventListener('click',recenterDriver);
@@ -658,6 +716,11 @@ if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoo
 updateSettingsUI();renderHistory();updateManualToll();showConnectionState();
 $('preview-origin').value='work';state.previewFrom='work';
 state.avoidTolls=safeStorageGet('avoidTolls')==='true';$('avoid-tolls').checked=state.avoidTolls;
+reminderSettings=readReminders();$('reminder-enabled').checked=reminderSettings.enabled;
+$('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;
+try{firedReminders=JSON.parse(safeStorageGet('reminder-fired')||'[]');if(!Array.isArray(firedReminders))firedReminders=[];}catch{firedReminders=[];}
+$('reminder-status').textContent=reminderSettings.enabled?'التذكير نشط أثناء توفر الصفحة؛ ليس Push عند إغلاق الموقع.':'التذكيرات متوقفة.';
+checkReminders();
 const token=safeStorageGet('token');
 if(token){$('token').value=token;window.addEventListener('load',()=>initializeMap(token));}
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
