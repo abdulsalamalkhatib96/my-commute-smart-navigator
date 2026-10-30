@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#10253b">
-  <meta name="description" content="ملاحة تجريبية شخصية لاختيار أسرع مسار حسب المرور وتوجيه المسارب عند توفرها">
+  <meta name="description" content="مساعد رحلة شخصي: قارن مساراتك واحفظ مصاريف الوقود وسجل الرحلات محليًا، مع بيانات المرور من Mapbox حيث تتوفر">
+  <meta name="color-scheme" content="light">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" href="./assets/icon-192.png">
   <title>My Commute — Smart Navigator</title>
@@ -15,7 +16,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div><small class="eyebrow">MY COMMUTE / تجريبي</small><h1>الملاحة الذكية للبيت</h1></div>
+    <div><small class="eyebrow">MY COMMUTE / PERSONAL NAVIGATOR</small><h1>مساعد رحلاتك الذكي</h1></div>
     <span class="status-pill" id="status" role="status" aria-live="polite">جاهز للإعداد</span>
   </header>
   <main class="layout">
@@ -27,18 +28,34 @@
         <p class="help">الرمز العام سيُحفظ محليًا في هذا المتصفح فقط. قيّد النطاقات المسموحة في لوحة Mapbox قبل النشر.</p>
       </section>
       <section class="panel">
-        <h2>2. حدد البيت</h2>
-        <div class="horizontal"><input id="place-search" placeholder="ابحث عن منطقة البيت (مثلاً Rashidiya 2, Ajman)" aria-label="ابحث عن عنوان المنزل"><button id="search-button" type="button">بحث</button></div>
+        <h2>2. الأماكن المفضلة</h2>
+        <label class="fieldlabel" for="place-kind">المكان الذي تريد حفظه</label>
+        <select id="place-kind" aria-label="اختيار المكان المراد حفظه"><option value="home">البيت</option><option value="work">العمل</option></select>
+        <div class="horizontal"><input id="place-search" placeholder="ابحث عن العنوان في الإمارات" aria-label="ابحث عن عنوان المنزل"><button id="search-button" type="button">بحث</button></div>
         <div id="results" class="results" role="listbox" aria-label="نتائج البحث"></div>
-        <div class="horizontal"><button id="pick-on-map" class="secondary" type="button">حدد البيت على الخريطة</button><button id="clear-home" class="secondary danger" type="button">حذف الموقع المحفوظ</button></div>
-        <p id="home-details" class="help">لم يتم تحديد البيت بعد. يمكنك البحث أو الضغط على مكانه فوق الخريطة.</p>
+        <div class="horizontal"><button id="pick-on-map" class="secondary" type="button">حدد المكان على الخريطة</button><button id="clear-home" class="secondary danger" type="button">حذف المكان المحدد</button></div>
+        <p id="home-details" class="help">البيت: غير محدد.</p><p id="work-details" class="help">العمل: غير محدد.</p>
       </section>
       <section class="panel">
-        <h2>3. شغّل الرحلة</h2>
-        <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إيقاف</button></div>
+        <h2>3. شغّل رحلتك</h2>
+        <label class="fieldlabel" for="destination">الوجهة</label>
+        <select id="destination" aria-label="الوجهة"><option value="home">إلى البيت</option><option value="work">إلى العمل</option></select>
+        <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إنهاء وحفظ الرحلة</button></div>
         <label class="switch"><input id="voice" type="checkbox" checked> إرشادات صوتية عندما يدعمها المتصفح</label>
-        <div class="metrics"><div><span>الوصول المتوقع</span><strong id="eta">—</strong></div><div><span>المسافة المتبقية</span><strong id="distance">—</strong></div><div><span>آخر تحديث</span><strong id="last-update">—</strong></div></div>
-        <div id="routes" class="routes" aria-live="polite"><p class="help">ستظهر الطرق بعد تشغيل GPS وتحديد البيت.</p></div>
+        <div class="metrics"><div><span>الوصول المتوقع</span><strong id="eta">—</strong></div><div><span>المسافة المتبقية</span><strong id="distance">—</strong></div><div><span>الوقود المتوقع*</span><strong id="fuel-estimate">—</strong></div><div><span>آخر تحديث</span><strong id="last-update">—</strong></div></div><p class="help">* التقدير للوقود فقط؛ لا يشمل سالك والمواقف ولا يمثل تكلفة الرحلة الكاملة.</p>
+        <div id="routes" class="routes" aria-live="polite"><p class="help">ستظهر الطرق بعد تشغيل GPS وتحديد الوجهة.</p></div>
+        <button id="open-waze" type="button" class="secondary full-width">افتح وجهتك في Waze للملاحة المعتمدة</button><p class="help">Waze قد يختار مسارًا مختلفًا عن Mapbox؛ لا يعتبر هذا زر متابعة نفس الطريق المختار.</p>
+      </section>
+      <section class="panel">
+        <h2>4. سياسة اختيار الطريق وتكلفة الوقود</h2>
+        <div class="settinggrid">
+          <label>أولوية الاختيار<select id="mode"><option value="balanced">متوازن (وقت + وقود)</option><option value="fast">الأسرع زمنًا</option><option value="economy">الأقل استهلاكًا للوقود</option></select></label>
+          <label>استهلاك السيارة (لتر / 100 كم)<input type="number" id="consumption" min="1" max="40" step="0.1"></label>
+          <label>سعر لتر الوقود (درهم)<input type="number" id="fuel-price" min="0.1" max="20" step="0.01"></label>
+          <label>قيمة ساعة وقتك (درهم)<input type="number" id="time-value" min="0" max="300" step="1"></label>
+        </div>
+        <button type="button" id="settings-save" class="secondary">حفظ إعدادات القيادة</button>
+        <p class="help">لا يتم إدراج رسوم سالك تلقائيًا لعدم وجود مصدر رسوم على مستوى كل مسار. وضع الأقل تكلفة يعني وقودًا أقل فقط.</p>
       </section>
       <section class="panel highlight-panel">
         <h2>توجيه المسرب عند المخرج القادم</h2>
@@ -46,7 +63,14 @@
         <div id="lanes" class="lanes"></div>
         <p class="help">المسرب الأخضر يعني أنه مناسب للمناورة القادمة، وليس أنه الأسرع وسط الزحمة. قد لا تتوفر معلومات المسارب.</p>
       </section>
-      <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">هذه نسخة أولية للمقارنة والتنبيه وليست بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>
+      <section class="panel">
+        <h2>5. سجلك الشخصي — على هذا الجهاز فقط</h2>
+        <div class="metrics"><div><span>الرحلات</span><strong id="trip-count">0</strong></div><div><span>المدة الوسطية</span><strong id="median-duration">—</strong></div><div><span>وسيط خطأ التوقع</span><strong id="eta-error">—</strong></div></div>
+        <p id="historical" class="help"></p>
+        <div class="horizontal wrap-buttons"><button type="button" class="secondary" id="export-json">نسخة JSON</button><button type="button" class="secondary" id="export-csv">تصدير CSV</button><label for="import-json" class="upload-button">استيراد JSON</label><input type="file" id="import-json" accept="application/json,.json" hidden><button type="button" class="secondary danger" id="delete-history">حذف السجل</button></div>
+        <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. لا يوجد حساب أو مزامنة بين الأجهزة في هذه النسخة.</p>
+      </section>
+      <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">تطبيق ويب للمقارنة والتحليل وليس بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>
     </section>
     <section class="map-panel" aria-label="خريطة الملاحة"><div id="map" class="map"><div class="placeholder">أدخل Mapbox Public token لإظهار الخريطة</div></div><div class="map-caption">المسارات حسب التغطية المتوفرة لدى Mapbox • يتطلب GPS اتصال HTTPS</div></section>
   </main>

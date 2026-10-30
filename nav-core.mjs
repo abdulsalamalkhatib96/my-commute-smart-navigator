@@ -58,7 +58,10 @@ export function progressOnSteps(point, steps) {
 }
 
 export function laneSummary(step) {
-  const withLanes = step?.intersections?.find(intersection => Array.isArray(intersection.lanes) && intersection.lanes.length);
+  // Only the intersection at the start of the upcoming step is relevant to its maneuver.
+  // Never pick lanes from a later intersection: that would mislead at the next junction.
+  const withLanes = step?.intersections?.[0];
+  if (!Array.isArray(withLanes?.lanes) || !withLanes.lanes.length) return null;
   if (!withLanes) return null;
   return withLanes.lanes.map((lane, i) => ({
     index: i+1, valid: lane.valid === true,
