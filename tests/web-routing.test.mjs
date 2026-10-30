@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {directionsUrl,validRouteEndpoints,previewOrigin,trafficFeatures,trafficSummary,possibleTollViolation} from '../web-routing.mjs';
+import {directionsUrl,validRouteEndpoints,previewOrigin,trafficFeatures,trafficSummary,possibleTollViolation,routeTollEvidence} from '../web-routing.mjs';
 const a=[55.15,25.08],b=[55.38,25.37];
 test('saved origin selection',()=>{assert.deepEqual(previewOrigin('work',{coordinates:b},{coordinates:a}),a);assert.equal(previewOrigin('current',null,null),null);});
 test('reject invalid or identical endpoints',()=>{assert.equal(validRouteEndpoints(a,a),false);assert.equal(validRouteEndpoints([200,25],b),false);});
@@ -10,4 +10,10 @@ test('traffic color pairs only matching geometry',()=>{const route={geometry:{co
 test('mismatched annotation is ignored',()=>assert.deepEqual(trafficFeatures({geometry:{coordinates:[a,b]},legs:[{annotation:{congestion:['heavy','low']}}]}),[]));
 test('unknown traffic is not low traffic',()=>assert.deepEqual(trafficSummary({legs:[{annotation:{congestion:['unknown','unknown']}}]}),{available:false,known:0,total:0,heavyPercent:null}));
 test('known congestion summary accounts for weights',()=>{const route={legs:[{annotation:{congestion:['low','heavy','unknown'],distance:[100,300,700]}}]};assert.equal(trafficSummary(route).heavyPercent,75);});
-test('toll exclusion can be violated',()=>{assert.equal(possibleTollViolation({notifications:[{subtype:'toll'}]}),true);assert.equal(possibleTollViolation({}),false);});
+test('Mapbox toll notifications are read from route legs, not top-level route',()=>{
+ const route={legs:[{notifications:[{type:'alert',subtype:'toll'}]},{notifications:[{type:'violation',subtype:'toll'}]}]};
+ assert.deepEqual(routeTollEvidence(route),{reported:true,avoidanceFailed:true,count:2});
+ assert.equal(possibleTollViolation(route),true);
+ assert.equal(possibleTollViolation({notifications:[{subtype:'toll'}]}),false);
+ assert.deepEqual(routeTollEvidence({legs:[{notifications:[]}]}),{reported:false,avoidanceFailed:false,count:0});
+});

@@ -86,8 +86,9 @@
         <h2>حساب سالك اليدوي — غير مربوط بالمسار</h2>
         <p class="help">أدخل عدد بوابات سالك التي تعرف أنك ستعبرها. الحساب حسب التوقيت الحالي في دبي، ولا يكتشف البوابات أو يستبدل فاتورة سالك الرسمية.</p>
         <label>عدد البوابات المتوقعة <input id="salik-gates" type="number" min="0" max="20" step="1" placeholder="غير معروف"></label>
+        <label>وقت عبور البوابات المتوقع (بتوقيت دبي، اختياري) <input id="salik-crossing-time" type="datetime-local"></label>
         <label class="switch"><input id="salik-ramadan" type="checkbox"> فترة رمضان (السعر يحتاج تحققًا من الجدول الرسمي)</label>
-        <p>تقدير سالك: <strong id="salik-estimate">غير معروف</strong></p>
+        <p>تقدير سالك: <strong id="salik-estimate">غير معروف</strong></p><p id="salik-vat" class="help">قد تنطبق ضريبة VAT؛ تحقق من الفاتورة الرسمية.</p>
         <p class="help">لا تدخل هذه القيمة في ترتيب الطرق لأن عدد البوابات لكل مسار غير متحقق.</p>
       </section>
       <section class="panel" aria-label="تذكيرات المغادرة">

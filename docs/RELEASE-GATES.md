@@ -49,7 +49,8 @@ All items start **unverified** until supported by evidence. A green unit-test pi
 
 - [x] On-device fuel/time ranking and historical trip statistics foundation
 - [x] Published standard Salik hourly rules encoded and unit-tested for **manual gate count**
-- [ ] Real route-specific Salik gate detection, discount exceptions, Ramadan schedule verification
+- [x] Mapbox route-leg toll warning detection and conditional VAT scenario with selectable crossing time.
+- [ ] Verified route-specific Salik gate count and Ramadan/exception pricing (requires direction-specific gate source)
 - [ ] Calibrated ETA versus Waze over 20–30 trips with different departure windows
 - [x] Historical weekday/hour departure comparison with sample count and low/medium confidence labels (not a traffic forecast)
 - [ ] Calibrated forward-looking departure predictions with uncertainty
