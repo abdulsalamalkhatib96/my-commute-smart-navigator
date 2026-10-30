@@ -290,7 +290,7 @@ function renderSalikEventLog(){
      ' · '+(row.discount?'إعفاء الزوج خلال ساعة':row.totalAED.toFixed(2)+' د.إ شامل الضريبة');
    const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='حذف';
    remove.setAttribute('aria-label','حذف عبور '+SALIK_GATES[row.gate]);
-   remove.addEventListener('click',()=>{salikEventLog.splice(index,1);safeStorageSet('salik-events',JSON.stringify(salikEventLog));renderSalikEventLog();});
+   remove.addEventListener('click',()=>{const realIndex=salikEventLog.findIndex(e=>e.gate===row.gate&&e.direction===row.direction&&e.at===row.at);if(realIndex>=0)salikEventLog.splice(realIndex,1);safeStorageSet('salik-events',JSON.stringify(salikEventLog));renderSalikEventLog();});
    line.append(text,remove);target.appendChild(line);
  }
  $('salik-event-total').textContent=summary.totalAED.toFixed(2)+' د.إ (رسم أساسي '+summary.baseAED.toFixed(2)+' + ضريبة '+summary.vatAED.toFixed(2)+
@@ -310,7 +310,7 @@ function updateManualToll(){
 function addSalikEvent(){
  if(salikEventLog.length>=40){feedback('حد السجل 40 عبورًا لتجنب البيانات غير المنضبطة.',true);return;}
  const local=$('salik-event-time').value;
- if(!/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d$/.test(local)){feedback('أدخل تاريخ ووقت العبور بتوقيت دبي.',true);return;}
+ if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(local)){feedback('أدخل تاريخ ووقت العبور بتوقيت دبي.',true);return;}
  const entry={gate:$('salik-event-gate').value,direction:$('salik-event-direction').value,at:local+':00+04:00'};
  const next=[...salikEventLog,entry];
  if(!priceCrossings(next)){feedback('بيانات العبور غير صالحة.',true);return;}
