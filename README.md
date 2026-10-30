@@ -149,3 +149,8 @@ The public `privacy.html` page documents local storage, Mapbox processing, notif
 The owner supplied a `pk.` token. GitHub push protection rejected storing it in Git, so the repository intentionally contains **no token**. To auto-connect deployed browsers, create GitHub **Actions repository secret** named `MAPBOX_PUBLIC_TOKEN` using the supplied `pk.` value. The deployment workflow injects it only into the public site artifact (public browser tokens remain visible by design). Set Mapbox allowed URLs to your eventual HTTPS Pages origin and configure billing usage alerts. Without an Actions secret, the user may enter the `pk.` value once in the site's setup panel; it is stored locally in their browser. Secret tokens (`sk.`) are rejected. A protected Pages site still requires one-time administrator setup before publish.
 
 A redesigned responsive dashboard adds top commute shortcuts, a mobile bottom dock, reduced-scrolling advanced sections, larger touch targets, improved visual hierarchy and screen reader navigation. It is still **web only** and cannot guarantee GPS with screen locked.
+
+
+## Optional on-screen wake lock (web only)
+
+The full-screen browser drive UI offers a user-clicked **Keep screen awake** control via Screen Wake Lock API on supporting HTTPS browsers. It is session-only, can be released by device power-saving/visibility rules, and is explicitly disabled when you leave drive mode. It does not ensure continued GPS, audio or route refresh when the device is locked. Users with no configured Mapbox token see the setup panel immediately rather than a permanently blank map.

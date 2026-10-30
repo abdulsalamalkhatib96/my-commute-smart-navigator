@@ -30,3 +30,10 @@ test('professional mobile navigation and advanced controls are bound',()=>{
  assert.match(js,/MAPBOX_PUBLIC_TOKEN/);
  assert.match(sw,/public-config\.mjs/);
 });
+
+test('browser wake lock is explicitly opt-in and has visible release controls',()=>{
+ for(const id of ['wake-toggle','wake-status'])assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(js,/navigator\.wakeLock\.request\('screen'\)/);
+ assert.match(js,/disableWakeLock/);
+ assert.match(js,/visibilitychange/);
+});
