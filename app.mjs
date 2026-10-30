@@ -775,7 +775,7 @@ async function searchPlace() {
 }
 async function diagnoseMapbox(){
  const token=(state.token||$('token').value||'').trim(),button=$('mapbox-diagnose'),result=$('mapbox-diagnostics');
- if(!/^pk\\.[A-Za-z0-9._-]+$/.test(token)){result.textContent='أدخل مفتاح Mapbox العام pk. أو فعّل إعداد الخرائط أولًا.';return;}
+ if(!/^pk\.[A-Za-z0-9._-]+$/.test(token)){result.textContent='أدخل مفتاح Mapbox العام pk. أو فعّل إعداد الخرائط أولًا.';return;}
  try{spendApiRequest('routing');}catch(error){result.textContent=error.message;return;}
  button.disabled=true;result.textContent='جارٍ التحقق من خدمة المسارات باستخدام معلمين عامين فقط…';
  try{
