@@ -112,3 +112,8 @@ Official reference: https://docs.mapbox.com/api/navigation/directions/
 ## Automated HTTPS site deployment
 
 Every successful merge to `main` triggers the GitHub Pages workflow. One-time repository Pages setting (source: **GitHub Actions**) must be enabled by the repository administrator. If that setting is disabled, the workflow will fail without publishing; no valid website URL should be claimed until the deployment succeeds. `tests/release-pipeline.test.mjs` guards the JS import/cache/artifact list to prevent a broken deploy from missing modules.
+
+
+## Geolocation safety guard
+
+Raw browser GPS timestamps are now checked against the actual measurement age and previous accepted fix, so stale/out-of-order fixes cannot masquerade as fresh. Off-route recovery may request a new route after a shorter, still bounded 8-second cooldown versus 35 seconds for ordinary checks. This does **not** constitute map matching or guarantee safe turn-by-turn guidance.

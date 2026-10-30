@@ -7,6 +7,7 @@ import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficS
 import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
 import {cameraForFix,canFollow} from './drive-mode.mjs';
 import {DEPARTURE_OFFSETS,predictedRouteUrl,departureOptions,departureComparison} from './departure-planner.mjs';
+import {validGpsTimestamp,routeCooldownMs} from './gps-policy.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -19,7 +20,7 @@ const state = {
   settings: {...DEFAULT_SETTINGS}, pendingRoute: null, trip: null, lastGpsFix: null,
   lastRouteChange: 0, lastDecision: '—', savePinFor: 'home', manualRouteUntil: 0, previewActive:false, previewFrom:'work', avoidTolls:false, lastGoodAt:0,
   driveMode:false,lastCameraAt:0,followPausedUntil:0,
-  departureForecastAt:0,departureForecastController:null
+  departureForecastAt:0,departureForecastController:null,lastAcceptedGpsAt:0
 };
 const RECHECK_MS = 90_000;
 const MIN_RECHECK_MS = 35_000;
@@ -396,7 +397,7 @@ async function requestRoutes(force=false,confirmedOffRoute=false) {
   if(driving&&state.accuracy>150){feedback('دقة GPS غير كافية.',true);return;}
   if(driving&&haversine(origin,destination.coordinates)<100){stopNavigation(true);return;}
   if(!validRouteEndpoints(origin,destination.coordinates)){feedback('حدد انطلاقًا ووجهة مختلفتين.',true);return;}
-  if(Date.now()-state.lastRequestAt<MIN_RECHECK_MS){if(force)feedback('تم التحديث مؤخرًا؛ انتظر قليلًا قبل إعادة الطلب.');return;}
+  if(Date.now()-state.lastRequestAt<routeCooldownMs(confirmedOffRoute)){if(force&&!confirmedOffRoute)feedback('تم التحديث مؤخرًا؛ انتظر قليلًا قبل إعادة الطلب.');return;}
   state.lastRequestAt=Date.now();
   state.controller?.abort();
   state.controller=new AbortController();
@@ -448,16 +449,18 @@ function onPosition(position) {
   const {longitude,latitude,accuracy,heading}=position.coords;
   const coord=[longitude,latitude];
   if (!isValidCoordinate(coord)) return;
-  if(position.timestamp && state.lastGpsFix && position.timestamp<=state.lastGpsFix.timestamp)return;
+  const measuredAt=Number.isFinite(position.timestamp)?position.timestamp:Date.now();
+  if(!validGpsTimestamp(measuredAt,state.lastAcceptedGpsAt))return;
+  state.lastAcceptedGpsAt=measuredAt;
   state.position=coord;state.accuracy=accuracy;state.heading=heading;
-  trackTripPosition(coord,accuracy,position.timestamp||Date.now());
-  state.fixAt=Date.now();
+  trackTripPosition(coord,accuracy,measuredAt);
+  state.fixAt=measuredAt;
   drawUserPosition();
   if (state.routes.length) {
     updateGuidance();
     if (state.closest?.lateralMeters>120 && accuracy<60) state.offRouteCount++;
     else state.offRouteCount=0;
-    if (state.offRouteCount>=3 && Date.now()-state.lastRequestAt>=MIN_RECHECK_MS) {
+    if (state.offRouteCount>=3 && Date.now()-state.lastRequestAt>=routeCooldownMs(true)) {
       feedback('يبدو أنك خرجت عن المسار: يجري إعادة حساب الطريق.');
       state.offRouteCount=0;requestRoutes(true,true);return;
     }
@@ -493,7 +496,7 @@ function startNavigation() {
   stopPreview();state.avoidTolls=$('avoid-tolls').checked;
   state.hasCentered=false;
   state.trip={id:crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`,destination:state.destination,startAt:new Date().toISOString(),distanceMeters:0,initialEtaSeconds:null};
-  state.lastGpsFix=null;
+  state.lastGpsFix=null;state.lastAcceptedGpsAt=0;
   state.watchId=navigator.geolocation.watchPosition(onPosition,onPositionError,{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
   state.timer=setInterval(()=>{if (!document.hidden && state.watchId!==null) requestRoutes();},RECHECK_MS);
   $('start').disabled=true;$('stop').disabled=false;
@@ -510,7 +513,7 @@ function stopNavigation(arrived=false) {
   if(state.timer!==null) clearInterval(state.timer);
   state.timer=null;state.controller?.abort();
   state.routes=[];state.selected=0;state.position=null;state.closest=null;state.pendingRoute=null;state.lastGpsFix=null;state.manualRouteUntil=0;
-  state.announced.clear();state.offRouteCount=0;
+  state.announced.clear();state.offRouteCount=0;state.lastAcceptedGpsAt=0;state.fixAt=0;
   if (state.userMarker){state.userMarker.remove();state.userMarker=null;}
   renderRouteSummary();renderRoutesOnMap();updateGuidance();
   $('start').disabled=false;$('stop').disabled=true;
