@@ -54,7 +54,8 @@ function setPlace(which, coordinates, name=which==='home'?'البيت':'العم
     state.map.flyTo({center:place.coordinates,zoom:13});
   }
   feedback(`تم حفظ ${which==='home'?'البيت':'العمل'}.`);
-  if (state.watchId !== null && state.destination===which) requestRoutes(true);
+  if (state.watchId !== null && state.destination===which) {state.lastRequestAt=0;requestRoutes(true);}
+  else if(state.previewActive&&(state.destination===which||state.previewFrom===which)){state.lastRequestAt=0;state.pendingRoute=null;state.routes=[];requestRoutes(true);}
 }
 function selectedDestination() {return state[state.destination];}
 function downloadFile(contents, filename, mime) {
@@ -272,7 +273,7 @@ async function requestRoutes(force=false) {
   if(driving&&state.accuracy>150){feedback('دقة GPS غير كافية.',true);return;}
   if(driving&&haversine(origin,destination.coordinates)<100){stopNavigation(true);return;}
   if(!validRouteEndpoints(origin,destination.coordinates)){feedback('حدد انطلاقًا ووجهة مختلفتين.',true);return;}
-  if(!force&&Date.now()-state.lastRequestAt<MIN_RECHECK_MS)return;
+  if(Date.now()-state.lastRequestAt<MIN_RECHECK_MS){if(force)feedback('تم التحديث مؤخرًا؛ انتظر قليلًا قبل إعادة الطلب.');return;}
   state.lastRequestAt=Date.now();
   state.controller?.abort();
   state.controller=new AbortController();
