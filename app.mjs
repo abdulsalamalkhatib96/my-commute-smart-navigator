@@ -4,6 +4,7 @@ import {readTrips, saveTrip, clearTrips, csvTrips, exportTrips, importTrips} fro
 import {estimateSalik} from './salik-core.mjs';
 import {historicalDepartureAdvice,formatHistoricalAdvice} from './departure-core.mjs';
 import {previewOrigin,validRouteEndpoints,directionsUrl,trafficFeatures,trafficSummary,possibleTollViolation} from './web-routing.mjs';
+import {dubaiArrival,alternativeSummary,trafficAge,exportProfile,importProfile} from './web-experience.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -23,7 +24,17 @@ function feedback(msg, isError=false) {
   $('feedback').textContent = msg;
   $('feedback').style.color = isError ? '#a33f37' : '';
 }
-function setStatus(msg) { $('status').textContent = msg; }
+function setStatus(msg) { $('status').textContent = msg; showConnectionState(); }
+function showConnectionState() {
+ const el=$('connection-status');if(!el)return;
+ const active=state.previewActive||state.watchId!==null,age=trafficAge(state.lastGoodAt);
+ if(navigator.onLine===false){el.dataset.state='offline';el.textContent='الإنترنت مقطوع؛ بيانات المرور قديمة.';}
+ else if(document.hidden&&active){el.dataset.state='paused';el.textContent='الصفحة بالخلفية: التحديث والموقع غير مضمونين.';}
+ else if(active&&age.state==='stale'){el.dataset.state='stale';el.textContent='بيانات المرور قديمة منذ '+age.minutes+' دقيقة.';}
+ else if(active&&age.state==='unknown'){el.dataset.state='waiting';el.textContent='بانتظار أول تحديث ناجح للمرور…';}
+ else if(active){el.dataset.state='fresh';el.textContent='آخر تحديث ناجح منذ '+age.minutes+' دقيقة.';}
+ else{el.dataset.state='idle';el.textContent='جاهز للمقارنة عند توفر الإنترنت ومفتاح Mapbox.';}
+}
 function safeStorageGet(key) { try { return localStorage.getItem(storageKey(key)); } catch { return null; } }
 function safeStorageSet(key, value) { try { localStorage.setItem(storageKey(key), value); } catch { feedback('تعذر الحفظ محليًا: المتصفح يمنع التخزين.'); } }
 function safeStorageRemove(key) { try { localStorage.removeItem(storageKey(key)); } catch {} }
@@ -212,8 +223,13 @@ function renderRouteSummary() {
     const time=document.createElement('b');time.textContent=formatMinutes(route.duration);
     button.append(label,time);button.onclick=()=>selectRoute(i);$('routes').appendChild(button);
   }
-  if (!selected) { $('eta').textContent='—';$('distance').textContent='—';return; }
-  $('eta').textContent=new Intl.DateTimeFormat('ar-AE',{hour:'2-digit',minute:'2-digit'}).format(new Date(Date.now()+selected.duration*1000));
+  if (!selected) { $('eta').textContent='—';$('distance').textContent='—';$('fuel-estimate').textContent='—';$('route-insight').textContent='قارن الطرق من الأزرار السريعة.';return; }
+  const difference=alternativeSummary(state.routes,state.selected);
+  $('route-insight').textContent=!difference?'لا تتوفر مقارنة كافية.':
+    difference.extraMinutes>0?'المسار المختار أبطأ من الأسرع بنحو '+difference.extraMinutes+' دقيقة.':
+    difference.savedMinutes>0?'المسار المختار هو الأسرع ويوفر حتى '+difference.savedMinutes+' دقيقة مقارنة بأبطأ بديل.':
+    'المسارات متقاربة في زمن الوصول.';
+  $('eta').textContent=dubaiArrival(selected.duration);
   $('distance').textContent=`${(selected.distance/1000).toFixed(1)} كم`;
   $('fuel-estimate').textContent=formatAED(fuelCost(selected,state.settings));
 }
@@ -269,6 +285,7 @@ async function requestRoutes(force=false) {
   const destination=selectedDestination(), driving=state.watchId!==null;
   const origin=driving?state.position:state.previewActive?previewOrigin(state.previewFrom,state.home,state.work):null;
   if(!state.token||!destination||!origin)return;
+  if(navigator.onLine===false){setStatus('غير متصل');feedback('لا يمكن تحديث المرور بدون إنترنت.',true);return;}
   if(driving&&Date.now()-state.fixAt>MAX_FIX_AGE_MS){feedback('الموقع قديم؛ انتظر إشارة GPS جديدة.',true);return;}
   if(driving&&state.accuracy>150){feedback('دقة GPS غير كافية.',true);return;}
   if(driving&&haversine(origin,destination.coordinates)<100){stopNavigation(true);return;}
@@ -304,7 +321,7 @@ async function requestRoutes(force=false) {
     if(previous && decision.reason==='better-route') speaker('وجدت طريقًا أسرع بشكل ملحوظ. تحقق من إمكانية تغيير الطريق بأمان.');
     state.routes=valid;
     state.selected=decision.index;
-    state.lastGoodAt=Date.now();
+    state.lastGoodAt=Date.now();showConnectionState();
     state.offRouteCount=0;
     if(state.trip && state.trip.initialEtaSeconds===null)state.trip.initialEtaSeconds=valid[state.selected].duration;
     renderRouteSummary();renderRoutesOnMap();updateGuidance();
@@ -416,6 +433,49 @@ async function searchPlace() {
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  function fastPreview(destination){
+    if(state.watchId!==null)stopNavigation();
+    if(state.previewActive)stopPreview();
+    state.destination=destination;$('destination').value=destination;
+    $('preview-origin').value=destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
+    renderHistory();previewRoutes();
+  }
+  $('quick-home').addEventListener('click',()=>fastPreview('home'));
+  $('quick-work').addEventListener('click',()=>fastPreview('work'));
+  $('export-profile').addEventListener('click',()=>{
+    try{downloadFile(exportProfile({home:state.home,work:state.work,settings:state.settings,avoidTolls:state.avoidTolls,destination:state.destination}),'my-commute-settings.json','application/json');}
+    catch(e){feedback('تعذر تصدير الإعدادات: '+e.message,true);}
+  });
+  $('import-profile').addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    try{
+      if(file.size>200000)throw Error('الملف كبير');
+      const data=importProfile(await file.text());
+      if(state.watchId!==null)stopNavigation();
+      if(state.previewActive)stopPreview();
+      for(const which of ['home','work']){
+        if(data[which])setPlace(which,data[which].coordinates,data[which].name);
+        else{
+          state[which]=null;safeStorageRemove(which);
+          const marker=which==='home'?'homeMarker':'workMarker';
+          state[marker]?.remove();state[marker]=null;$(which+'-details').textContent='غير محدد.';
+        }
+      }
+      state.settings=data.settings;safeStorageSet('settings',JSON.stringify(state.settings));
+      state.avoidTolls=data.avoidTolls;safeStorageSet('avoidTolls',String(data.avoidTolls));$('avoid-tolls').checked=data.avoidTolls;
+      state.destination=data.destination;$('destination').value=data.destination;
+      $('preview-origin').value=data.destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
+      updateSettingsUI();renderHistory();renderRouteSummary();
+      feedback('تم استيراد العناوين والإعدادات دون تغيير المفتاح أو سجل الرحلات.');
+    }catch(e){feedback('استيراد مرفوض: '+e.message,true);}
+    finally{event.target.value='';}
+  });
+  window.addEventListener('offline',showConnectionState);
+  window.addEventListener('online',()=>{
+    showConnectionState();
+    if(state.watchId!==null||state.previewActive){state.lastRequestAt=0;requestRoutes(true);}
+  });
+  window.setInterval(showConnectionState,30000);
   $('preview-route').addEventListener('click',previewRoutes);
   $('refresh-route').addEventListener('click',()=>{if(state.watchId!==null||state.previewActive)requestRoutes(true);else feedback('ابدأ معاينة أو رحلة أولًا.');});
   $('preview-origin').addEventListener('change',()=>{if(state.previewActive)stopPreview();state.previewFrom=$('preview-origin').value;});
@@ -471,6 +531,7 @@ function wireEvents() {
     feedback('حُذف الموقع المختار من هذا المتصفح.');
   });
   document.addEventListener('visibilitychange',()=>{
+    showConnectionState();
     if (!document.hidden && (state.watchId!==null||state.previewActive)) requestRoutes();
   });
 }
@@ -478,7 +539,7 @@ wireEvents();
 state.home=readPlace('home');state.work=readPlace('work');state.settings=readSettings();
 if(state.home) $('home-details').textContent=`${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
 if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoordinate(state.work.coordinates)}`;
-updateSettingsUI();renderHistory();updateManualToll();
+updateSettingsUI();renderHistory();updateManualToll();showConnectionState();
 $('preview-origin').value='work';state.previewFrom='work';
 state.avoidTolls=safeStorageGet('avoidTolls')==='true';$('avoid-tolls').checked=state.avoidTolls;
 const token=safeStorageGet('token');

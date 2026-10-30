@@ -27,7 +27,7 @@ jobs:
       - name: Build safe static artifact
         run: |
           mkdir -p public/assets
-          cp index.html style.css app.mjs nav-core.mjs decision-core.mjs trip-store.mjs salik-core.mjs departure-core.mjs web-routing.mjs sw.js manifest.webmanifest public/
+          cp index.html style.css app.mjs nav-core.mjs decision-core.mjs trip-store.mjs salik-core.mjs departure-core.mjs web-routing.mjs web-experience.mjs sw.js manifest.webmanifest public/
           cp assets/icon-192.png assets/icon-512.png public/assets/
           touch public/.nojekyll
       - name: Configure Pages
