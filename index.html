@@ -15,22 +15,25 @@
   <script type="module" src="./app.mjs"></script>
 </head>
 <body>
+  <a class="skip-link" href="#journey-planner">انتقل إلى تخطيط الرحلة</a>
   <header class="topbar">
-    <div><small class="eyebrow">MY COMMUTE / PERSONAL NAVIGATOR</small><h1>مساعد رحلاتك الذكي</h1></div>
+    <div class="brand-heading"><div class="brand-mark" aria-hidden="true">↗</div><div><small class="eyebrow">MY COMMUTE · SMART NAVIGATOR</small><h1>رحلتك أذكى، يومك أريح</h1></div></div>
     <span class="status-pill" id="status" role="status" aria-live="polite">جاهز للإعداد</span>
+    <nav class="top-links" aria-label="روابط سريعة"><a href="#journey-planner">الطرق</a><a href="#live-trip">الملاحة</a><a href="#advanced-history">رحلاتي</a></nav>
   </header>
   <section class="quick-journey" aria-label="رحلة سريعة">
-    <div><strong>وين رايح اليوم؟</strong><span>قارن طريقك من أماكنك المحفوظة بنقرة واحدة بدون GPS.</span></div>
+    <div class="quick-lead"><span class="mini-label">مساعد التنقّل الشخصي</span><strong>وين رايح اليوم؟</strong><span>البيت والعمل بنقرة واحدة؛ أسرع طريق، الازدحام والتكلفة.</span></div>
     <button id="quick-home" type="button" class="primary">إلى البيت من العمل</button>
     <button id="quick-work" type="button" class="secondary">إلى العمل من البيت</button>
   </section>
+  <div class="quick-toolbar"><span class="toolbar-hint">كل التفاصيل متاحة عند الحاجة.</span><button type="button" id="advanced-toggle" class="secondary" aria-controls="setup-panel advanced-settings advanced-tolls advanced-history" aria-expanded="false">عرض الخيارات المتقدمة</button></div>
   <p id="connection-status" class="connection-status" role="status" data-state="idle">جاهز للمقارنة.</p>
   <main class="layout">
     <section class="dashboard" aria-label="التحكم في الملاحة">
-      <section class="panel" id="setup-panel">
-        <h2>1. ربط الخرائط</h2>
-        <p class="help">أنشئ حساب Mapbox وخذ <code>Public access token</code> يبدأ بـ <code>pk.</code>. احتفظ بأي Secret token خارج المتصفح.</p>
-        <div class="horizontal"><input id="token" type="password" inputmode="text" placeholder="pk. …" autocomplete="off" aria-label="Public Mapbox token"><button id="save-token" type="button">تشغيل الخريطة</button></div>
+      <section class="panel advanced-panel" id="setup-panel">
+        <h2>إعداد الخرائط</h2>
+        <p class="help">إذا أضفت المفتاح العام إلى GitHub Actions Secret باسم <code>MAPBOX_PUBLIC_TOKEN</code> ستعمل الخرائط تلقائيًا بعد النشر. ويمكنك إدخال مفتاح <code>pk.</code> هنا وحفظه في هذا المتصفح؛ لا تستخدم مفتاح <code>sk.</code> السري.</p>
+        <div class="horizontal"><input id="token" type="password" inputmode="text" placeholder="pk. …" autocomplete="off" aria-label="Public Mapbox token"><button id="save-token" type="button">توصيل الخرائط</button></div>
         <p class="help">الرمز العام سيُحفظ محليًا في هذا المتصفح فقط. قيّد النطاقات المسموحة في لوحة Mapbox قبل النشر.</p>
         <p id="api-budget" class="help" aria-live="polite">جارٍ تحميل حدود الطلبات اليومية…</p>
         <p class="help">حدود الاستهلاك محلية لهذا المتصفح فقط؛ لا تمنع رسوم الحساب لدى Mapbox. فعّل إنذارات الميزانية من لوحة Mapbox.</p>
@@ -44,7 +47,7 @@
         <div class="horizontal"><button id="pick-on-map" class="secondary" type="button">حدد المكان على الخريطة</button><button id="clear-home" class="secondary danger" type="button">حذف المكان المحدد</button></div>
         <p id="home-details" class="help">البيت: غير محدد.</p><p id="work-details" class="help">العمل: غير محدد.</p>
       </section>
-      <section class="panel preview-panel" aria-label="معاينة الطرق قبل الانطلاق">
+      <section class="panel preview-panel" id="journey-planner" aria-label="معاينة الطرق قبل الانطلاق">
         <h2>3. قارن أسرع طريق قبل الخروج — بدون GPS</h2>
         <p class="help">اختر مكان الانطلاق المحفوظ والوجهة أعلاه. سيقارن الموقع الطرق والتكلفة ووقت الوصول بدون تشغيل تتبّع GPS. يتجدد كل 90 ثانية ما دامت الصفحة نشطة.</p>
         <label class="fieldlabel" for="preview-origin">مكان الانطلاق</label>
@@ -61,7 +64,7 @@
         <div class="traffic-legend" aria-label="ألوان الازدحام"><span><i class="traffic-dot free"></i> خفيف</span><span><i class="traffic-dot medium"></i> متوسط</span><span><i class="traffic-dot heavy"></i> كثيف</span><span><i class="traffic-dot severe"></i> شديد</span><span><i class="traffic-dot unknown"></i> غير معروف</span></div>
         <p class="help">اللون يصف ازدحام مقاطع الطريق عندما يرسله Mapbox، وليس سرعة المسارب الفردية. الوقت تقديري وقد يتغير أثناء القيادة.</p>
       </section>
-      <section class="panel">
+      <section class="panel" id="live-trip">
         <h2>4. شغّل رحلتك</h2>
         <label class="fieldlabel" for="destination">الوجهة</label>
         <select id="destination" aria-label="الوجهة"><option value="home">إلى البيت</option><option value="work">إلى العمل</option></select>
@@ -73,7 +76,7 @@
         <div id="routes" class="routes" aria-live="polite"><p class="help">ستظهر الطرق بعد تشغيل GPS وتحديد الوجهة.</p></div>
         <button id="open-waze" type="button" class="secondary full-width">افتح وجهتك في Waze للملاحة المعتمدة</button><p class="help">Waze قد يختار مسارًا مختلفًا عن Mapbox؛ لا يعتبر هذا زر متابعة نفس الطريق المختار.</p>
       </section>
-      <section class="panel">
+      <section class="panel advanced-panel" id="advanced-settings">
         <h2>5. سياسة اختيار الطريق وتكلفة الوقود</h2>
         <div class="settinggrid">
           <label>أولوية الاختيار<select id="mode"><option value="balanced">متوازن (وقت + وقود)</option><option value="fast">الأسرع زمنًا</option><option value="economy">الأقل استهلاكًا للوقود</option></select></label>
@@ -84,7 +87,7 @@
         <button type="button" id="settings-save" class="secondary">حفظ إعدادات القيادة</button>
         <p class="help">لا يتم إدراج رسوم سالك تلقائيًا لعدم وجود مصدر رسوم على مستوى كل مسار. وضع الأقل تكلفة يعني وقودًا أقل فقط.</p>
       </section>
-      <section class="panel">
+      <section class="panel advanced-panel" id="advanced-tolls">
         <h2>حساب سالك اليدوي — غير مربوط بالمسار</h2>
         <p class="help">أدخل عدد بوابات سالك التي تعرف أنك ستعبرها. الحساب حسب التوقيت الحالي في دبي، ولا يكتشف البوابات أو يستبدل فاتورة سالك الرسمية.</p>
         <label>عدد البوابات المتوقعة <input id="salik-gates" type="number" min="0" max="20" step="1" placeholder="غير معروف"></label>
@@ -110,7 +113,7 @@
         <div id="lanes" class="lanes"></div>
         <p class="help">المسرب الأخضر يعني أنه مناسب للمناورة القادمة، وليس أنه الأسرع وسط الزحمة. قد لا تتوفر معلومات المسارب.</p>
       </section>
-      <section class="panel">
+      <section class="panel advanced-panel" id="advanced-history">
         <h2>6. سجلك الشخصي — على هذا الجهاز فقط</h2>
         <div class="metrics"><div><span>الرحلات</span><strong id="trip-count">0</strong></div><div><span>المدة الوسطية</span><strong id="median-duration">—</strong></div><div><span>وسيط خطأ التوقع</span><strong id="eta-error">—</strong></div></div>
         <p id="historical" class="help"></p>
@@ -130,6 +133,7 @@
     <section class="map-panel" aria-label="خريطة الملاحة"><div id="map" class="map"><div class="placeholder">أدخل Mapbox Public token لإظهار الخريطة</div></div><div class="map-caption">المسارات حسب التغطية المتوفرة لدى Mapbox • يتطلب GPS اتصال HTTPS</div></section>
   </main>
   <div id="drive-toolbar" class="drive-toolbar" hidden role="toolbar" aria-label="وضع خريطة القيادة"><strong id="drive-summary" aria-live="polite">بانتظار الطريق</strong><div class="drive-actions"><button type="button" id="drive-center">توسيط GPS</button><button type="button" id="drive-waze">الملاحة في Waze</button><button type="button" id="drive-exit">إغلاق الخريطة</button></div></div>
+  <nav class="mobile-dock" aria-label="اختصارات سريعة"><button type="button" id="dock-home" class="dock-main"><span aria-hidden="true">⌂</span> البيت</button><button type="button" id="dock-work"><span aria-hidden="true">⌘</span> العمل</button><button type="button" id="dock-map"><span aria-hidden="true">◇</span> الخريطة</button></nav>
   <footer>لا يحتفظ خادم تابع للتطبيق بإحداثياتك. تُرسل طلبات البحث والمواقع المطلوبة إلى Mapbox عند استخدام الخرائط. <a href="./privacy.html">الخصوصية والبيانات</a></footer>
 </body>
 </html>

@@ -142,3 +142,10 @@ The website now limits its own requests by Dubai-local day: 240 standard routing
 ## Website privacy page
 
 The public `privacy.html` page documents local storage, Mapbox processing, notification permissions, encrypted vs unencrypted backups, local deletion, GitHub Pages hosting and browser limits. It is part of the Pages deployment and offline shell. This is a technical data-handling disclosure, not externally reviewed legal advice.
+
+
+## Mapbox production setup (public token / deployment secret)
+
+The owner supplied a `pk.` token. GitHub push protection rejected storing it in Git, so the repository intentionally contains **no token**. To auto-connect deployed browsers, create GitHub **Actions repository secret** named `MAPBOX_PUBLIC_TOKEN` using the supplied `pk.` value. The deployment workflow injects it only into the public site artifact (public browser tokens remain visible by design). Set Mapbox allowed URLs to your eventual HTTPS Pages origin and configure billing usage alerts. Without an Actions secret, the user may enter the `pk.` value once in the site's setup panel; it is stored locally in their browser. Secret tokens (`sk.`) are rejected. A protected Pages site still requires one-time administrator setup before publish.
+
+A redesigned responsive dashboard adds top commute shortcuts, a mobile bottom dock, reduced-scrolling advanced sections, larger touch targets, improved visual hierarchy and screen reader navigation. It is still **web only** and cannot guarantee GPS with screen locked.

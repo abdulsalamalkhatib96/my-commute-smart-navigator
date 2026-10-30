@@ -12,6 +12,7 @@ import {DEFAULT_REMINDERS,parseReminderSettings,dueReminders} from './reminder-c
 import {encryptPrivateBackup,decryptPrivateBackup} from './secure-backup.mjs';
 import {validTrip} from './trip-store.mjs';
 import {LIMITS,normalizeBudget,reserveBudget} from './api-budget.mjs';
+import {MAPBOX_PUBLIC_TOKEN} from './public-config.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -671,6 +672,17 @@ async function searchPlace() {
   } catch(error) {feedback(`تعذر البحث: ${error.message}`,true);$('results').replaceChildren();}
 }
 function wireEvents() {
+  function showAdvanced(show){
+    document.body.classList.toggle('show-advanced',Boolean(show));
+    $('advanced-toggle').setAttribute('aria-expanded',String(Boolean(show)));
+    $('advanced-toggle').textContent=show?'إخفاء الخيارات المتقدمة':'عرض الخيارات المتقدمة';
+    safeStorageSet('showAdvanced',String(Boolean(show)));
+  }
+  $('advanced-toggle').addEventListener('click',()=>showAdvanced(!document.body.classList.contains('show-advanced')));
+  $('dock-home').addEventListener('click',()=>$('quick-home').click());
+  $('dock-work').addEventListener('click',()=>$('quick-work').click());
+  $('dock-map').addEventListener('click',()=>$('drive-mode-toggle').click());
+  showAdvanced(safeStorageGet('showAdvanced')==='true');
   $('export-secure').addEventListener('click',exportEncryptedData);
   $('import-secure').addEventListener('change',importEncryptedData);
   $('reminder-save').addEventListener('click',saveReminders);
@@ -799,6 +811,6 @@ $('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=remi
 try{firedReminders=JSON.parse(safeStorageGet('reminder-fired')||'[]');if(!Array.isArray(firedReminders))firedReminders=[];}catch{firedReminders=[];}
 $('reminder-status').textContent=reminderSettings.enabled?'التذكير نشط أثناء توفر الصفحة؛ ليس Push عند إغلاق الموقع.':'التذكيرات متوقفة.';
 checkReminders();
-const token=safeStorageGet('token');
+const token=safeStorageGet('token')||MAPBOX_PUBLIC_TOKEN;
 if(token){$('token').value=token;window.addEventListener('load',()=>initializeMap(token));}
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
