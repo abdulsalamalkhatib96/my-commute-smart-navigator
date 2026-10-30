@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {directionsUrl,validRouteEndpoints,previewOrigin,trafficFeatures,trafficSummary,possibleTollViolation} from '../web-routing.mjs';
+const a=[55.15,25.08],b=[55.38,25.37];
+test('saved origin selection',()=>{assert.deepEqual(previewOrigin('work',{coordinates:b},{coordinates:a}),a);assert.equal(previewOrigin('current',null,null),null);});
+test('reject invalid or identical endpoints',()=>{assert.equal(validRouteEndpoints(a,a),false);assert.equal(validRouteEndpoints([200,25],b),false);});
+test('traffic request includes full annotations and optional toll exclusion',()=>{const url=new URL(directionsUrl(a,b,'pk.test',{avoidTolls:true}));assert.equal(url.searchParams.get('annotations'),'congestion,distance,speed');assert.equal(url.searchParams.get('overview'),'full');assert.equal(url.searchParams.get('exclude'),'toll');});
+test('reject secret token',()=>assert.throws(()=>directionsUrl(a,b,'sk.secret')));
+test('traffic color pairs only matching geometry',()=>{const route={geometry:{coordinates:[a,[55.2,25.2],b]},legs:[{annotation:{congestion:['heavy','low']}}]};const result=trafficFeatures(route);assert.equal(result.length,2);assert.equal(result[0].properties.congestion,'heavy');assert.deepEqual(result[1].geometry.coordinates[1],b);});
+test('mismatched annotation is ignored',()=>assert.deepEqual(trafficFeatures({geometry:{coordinates:[a,b]},legs:[{annotation:{congestion:['heavy','low']}}]}),[]));
+test('unknown traffic is not low traffic',()=>assert.deepEqual(trafficSummary({legs:[{annotation:{congestion:['unknown','unknown']}}]}),{available:false,known:0,total:0,heavyPercent:null}));
+test('known congestion summary accounts for weights',()=>{const route={legs:[{annotation:{congestion:['low','heavy','unknown'],distance:[100,300,700]}}]};assert.equal(trafficSummary(route).heavyPercent,75);});
+test('toll exclusion can be violated',()=>{assert.equal(possibleTollViolation({notifications:[{subtype:'toll'}]}),true);assert.equal(possibleTollViolation({}),false);});
