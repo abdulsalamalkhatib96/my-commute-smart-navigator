@@ -15,3 +15,10 @@ This project contains a manual deployment workflow: `.github/workflows/pages.yml
 **Safety:** PWA cannot guarantee continued geolocation or speech when locked/backgrounded. Do not treat this as a primary in-car navigator. Use the built-in Waze deep link for actual guidance. GitHub Pages is publicly reachable; private location data should never be embedded in source or static files.
 
 Track browser Console, network failures and Mapbox token errors during first use. GitHub Actions cannot validate Mapbox traffic coverage or mobile GPS without a real token/device.
+
+
+### Website route-preview workflow
+
+Once deployed via HTTPS, enter the Mapbox `pk...` token, save home/work, choose the destination, and press **قارن الطرق الآن**. This works without an active GPS watch. Optional toll avoidance is best-effort only; do not mistake the route color for real-time lane speeds. Keep the tab in the foreground for automatic updates.
+
+The experimental Android directory and workflows are not required for website deployment and are outside the current scope.

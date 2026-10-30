@@ -15,4 +15,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run navigation helper tests
-        run: node --test tests/*.test.mjs
+        run: node --check app.mjs && node --check web-routing.mjs && node --test tests/*.test.mjs

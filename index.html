@@ -36,8 +36,19 @@
         <div class="horizontal"><button id="pick-on-map" class="secondary" type="button">حدد المكان على الخريطة</button><button id="clear-home" class="secondary danger" type="button">حذف المكان المحدد</button></div>
         <p id="home-details" class="help">البيت: غير محدد.</p><p id="work-details" class="help">العمل: غير محدد.</p>
       </section>
+      <section class="panel preview-panel" aria-label="معاينة الطرق قبل الانطلاق">
+        <h2>3. قارن أسرع طريق قبل الخروج — بدون GPS</h2>
+        <p class="help">اختر مكان الانطلاق المحفوظ والوجهة أعلاه. سيقارن الموقع الطرق والتكلفة ووقت الوصول بدون تشغيل تتبّع GPS. يتجدد كل 90 ثانية ما دامت الصفحة نشطة.</p>
+        <label class="fieldlabel" for="preview-origin">مكان الانطلاق</label>
+        <select id="preview-origin" aria-label="مكان الانطلاق للمعاينة"><option value="work">من العمل</option><option value="home">من البيت</option></select>
+        <label class="switch"><input id="avoid-tolls" type="checkbox"> حاول تجنّب الطرق المدفوعة (لا يضمن عدم وجود رسوم)</label>
+        <div class="horizontal wrap-buttons"><button id="preview-route" type="button" class="primary">قارن الطرق الآن</button><button id="refresh-route" type="button" class="secondary">تحديث الطريق</button></div>
+        <div id="traffic-summary" class="traffic-details" role="status" aria-live="polite">لا توجد بيانات طريق حتى الآن.</div>
+        <div class="traffic-legend" aria-label="ألوان الازدحام"><span><i class="traffic-dot free"></i> خفيف</span><span><i class="traffic-dot medium"></i> متوسط</span><span><i class="traffic-dot heavy"></i> كثيف</span><span><i class="traffic-dot severe"></i> شديد</span><span><i class="traffic-dot unknown"></i> غير معروف</span></div>
+        <p class="help">اللون يصف ازدحام مقاطع الطريق عندما يرسله Mapbox، وليس سرعة المسارب الفردية. الوقت تقديري وقد يتغير أثناء القيادة.</p>
+      </section>
       <section class="panel">
-        <h2>3. شغّل رحلتك</h2>
+        <h2>4. شغّل رحلتك</h2>
         <label class="fieldlabel" for="destination">الوجهة</label>
         <select id="destination" aria-label="الوجهة"><option value="home">إلى البيت</option><option value="work">إلى العمل</option></select>
         <div class="horizontal"><button id="start" type="button" class="primary">ابدأ الملاحة باستخدام GPS</button><button id="stop" type="button" class="secondary" disabled>إنهاء وحفظ الرحلة</button></div>
@@ -47,7 +58,7 @@
         <button id="open-waze" type="button" class="secondary full-width">افتح وجهتك في Waze للملاحة المعتمدة</button><p class="help">Waze قد يختار مسارًا مختلفًا عن Mapbox؛ لا يعتبر هذا زر متابعة نفس الطريق المختار.</p>
       </section>
       <section class="panel">
-        <h2>4. سياسة اختيار الطريق وتكلفة الوقود</h2>
+        <h2>5. سياسة اختيار الطريق وتكلفة الوقود</h2>
         <div class="settinggrid">
           <label>أولوية الاختيار<select id="mode"><option value="balanced">متوازن (وقت + وقود)</option><option value="fast">الأسرع زمنًا</option><option value="economy">الأقل استهلاكًا للوقود</option></select></label>
           <label>استهلاك السيارة (لتر / 100 كم)<input type="number" id="consumption" min="1" max="40" step="0.1"></label>
@@ -72,13 +83,13 @@
         <p class="help">المسرب الأخضر يعني أنه مناسب للمناورة القادمة، وليس أنه الأسرع وسط الزحمة. قد لا تتوفر معلومات المسارب.</p>
       </section>
       <section class="panel">
-        <h2>5. سجلك الشخصي — على هذا الجهاز فقط</h2>
+        <h2>6. سجلك الشخصي — على هذا الجهاز فقط</h2>
         <div class="metrics"><div><span>الرحلات</span><strong id="trip-count">0</strong></div><div><span>المدة الوسطية</span><strong id="median-duration">—</strong></div><div><span>وسيط خطأ التوقع</span><strong id="eta-error">—</strong></div></div>
         <p id="historical" class="help"></p>
         <div class="horizontal wrap-buttons"><button type="button" class="secondary" id="export-json">نسخة JSON</button><button type="button" class="secondary" id="export-csv">تصدير CSV</button><label for="import-json" class="upload-button">استيراد JSON</label><input type="file" id="import-json" accept="application/json,.json" hidden><button type="button" class="secondary danger" id="delete-history">حذف السجل</button></div>
         <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. لا يوجد حساب أو مزامنة بين الأجهزة في هذه النسخة.</p>
       </section>
-      <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">تطبيق ويب للمقارنة والتحليل وليس بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>
+      <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">المعاينة والتحديث يعملان ما دامت الصفحة مفتوحة. هذه أداة تخطيط ومقارنة وليست بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>
     </section>
     <section class="map-panel" aria-label="خريطة الملاحة"><div id="map" class="map"><div class="placeholder">أدخل Mapbox Public token لإظهار الخريطة</div></div><div class="map-caption">المسارات حسب التغطية المتوفرة لدى Mapbox • يتطلب GPS اتصال HTTPS</div></section>
   </main>
