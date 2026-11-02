@@ -31,3 +31,8 @@ All except `GET /health` require `Authorization: Bearer <SYNC_API_TOKEN>`. Only 
 ## Verification against PostgreSQL
 
 GitHub Actions provisions ephemeral PostgreSQL 16 and runs `backend/tests/postgres.test.mjs` as a real integration test. It verifies table migrations, encrypted JSONB persistence, optimistic CAS conflict handling and database-level push delivery uniqueness. This does not exercise a deployed HTTPS host or external push provider; live end-to-end acceptance remains required.
+
+
+## Optional self-hosting with HTTPS
+
+On an owner-controlled VPS with DNS pointing `API_DOMAIN` at the server IP and TCP ports 80/443 open, install Docker Compose and set the environment variables from `.env.example`, including a URL-safe random `PG_PASSWORD`, `API_DOMAIN`, `SYNC_API_TOKEN` and VAPID details. From `backend/`, run `docker compose up -d --build`. Compose creates a persistent private PostgreSQL volume and a Caddy HTTPS proxy. Database port is not exposed publicly. Configure secured database backups, host firewall, API hostname, monitoring and certificate renewal. **Creating external hosting and DNS cannot be performed by the current GitHub-only connection.** Never commit your `.env` or the user's encryption password.
