@@ -313,7 +313,7 @@ async function cloudTick(){
 async function subscribeCloudPush(){
  if(!cloud.api)throw Error('اتصل بالخادم أولًا');
  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw Error('هذا المتصفح لا يدعم Web Push.');
- if(!$('reminder-enabled').checked)throw Error('فعّل التذكيرات أولًا واحفظها قبل الاشتراك في Push.');
+ if(!reminderSettings.enabled||!$('reminder-enabled').checked||reminderSettings.workTime!==$('reminder-work').value||reminderSettings.homeTime!==$('reminder-home').value)throw Error('فعّل التذكيرات واحفظ مواعيدها أولًا قبل الاشتراك في Push.');
  const permission=await Notification.requestPermission();
  if(permission!=='granted')throw Error('لم تمنح إذن إشعارات المتصفح.');
  const result=await cloud.api('/v1/push/key');
