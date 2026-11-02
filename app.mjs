@@ -18,6 +18,7 @@ import {validTrip} from './trip-store.mjs';
 import {LIMITS,normalizeBudget,reserveBudget} from './api-budget.mjs';
 import {MAPBOX_PUBLIC_TOKEN} from './public-config.mjs';
 import {cloudApiOrigin,createCloudClient,payloadDigest,revisionMatches,vapidBytes} from './cloud-client.mjs';
+import {mergeTripHistories} from './sync-merge.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -245,11 +246,13 @@ async function cloudDownload(){
   if(data?.version!==1||!Array.isArray(data.trips)||data.trips.length>3650||
     data.trips.some(t=>!validTrip(t)))throw Error('نسخة الرحلات غير صالحة');
   const profile=importProfile(JSON.stringify(data.profile));
+  const mergedTrips=await mergeTripHistories(readTrips(),data.trips,{max:state.settings.maxHistory});
   if(data.salikEvents!==undefined&&(!Array.isArray(data.salikEvents)||data.salikEvents.length>40||priceCrossings(data.salikEvents)===null))throw Error('سجل سالك السحابي غير صالح');
-  if(!confirm('سيتم اعتماد أماكن وإعدادات النسخة السحابية ودمج الرحلات مع المحفوظة هنا. هل تتابع؟'))return;
+  const warning=mergedTrips.conflicts.length?' هناك '+mergedTrips.conflicts.length+' رحلات تحمل المعرّف نفسه وتختلف محتوياتها؛ سيُحتفظ بالنسختين بمعرفين منفصلين.':'';
+  if(!confirm('سيتم اعتماد أماكن وإعدادات النسخة السحابية ودمج '+mergedTrips.trips.length+' رحلة دون حذف السجلات،'+warning+' هل تتابع؟'))return;
   if(state.watchId!==null)stopNavigation();
   if(state.previewActive)stopPreview();
-  const count=importTrips(JSON.stringify({version:1,trips:data.trips}),state.settings.maxHistory);
+  const count=importTrips(JSON.stringify({version:1,trips:mergedTrips.trips}),state.settings.maxHistory);
   for(const which of ['home','work']){
    if(profile[which])setPlace(which,profile[which].coordinates,profile[which].name);
    else{
@@ -271,7 +274,7 @@ async function cloudDownload(){
   cloud.baseline=await payloadDigest(data);
   safeStorageSet('cloud-revision',String(result.revision));
   safeStorageSet('cloud-baseline',cloud.baseline);
-  cloudMessage('استُعيدت البيانات وفُحصت: دُمج '+count+' سجل رحلة. لن تُستبدل نسخة الخادم تلقائيًا عند وجود تعارض.');
+  cloudMessage('استُعيدت البيانات وفُحصت: دُمج '+count+' سجل رحلة، مع حفظ '+mergedTrips.conflicts.length+' حالات تعارض كنسخ منفصلة. لن تُستبدل نسخة الخادم تلقائيًا عند وجود تعارض.');
  }finally{cloud.busy=false;}
 }
 async function cloudTick(){

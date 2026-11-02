@@ -201,3 +201,8 @@ A separate `backend/compose.yaml` now defines the personal Node API, PostgreSQL 
 ## Backend readiness
 
 HTTP `/health` verifies PostgreSQL access rather than just the Node server. Push reminders have a five-minute catch-up window after short outages with DB-based de-duplication (no claim of guaranteed delivery). See `backend/README.md` for production limitations.
+
+
+## Conflict-safe trip imports across browsers
+
+Encrypted cloud downloads now validate and **preflight** the union of local/remote trip histories before writing. If two trips share an ID but have different details, the remote record is preserved using a deterministic content-derived ID with an explicit confirmation; neither trip is overwritten. If the union exceeds the user's history cap, import **fails closed without dropping older records**. This guards against silent data loss from previous last-writer-wins merges. Remote snapshot CAS revisions continue to prevent overwriting changes made by another device.
