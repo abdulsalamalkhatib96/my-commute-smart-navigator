@@ -191,3 +191,8 @@ A live external browser check confirmed Mapbox Directions could return routes an
 ## Personal cloud sync & background push client
 
 The web app now supports an optional owner-hosted backend (see `backend/README.md`). Enter the **HTTPS backend origin, personal bearer token and 12+ character encryption password** once per page session. These credentials are not persisted; the API origin, last revision and non-secret payload digest are stored locally. Upload encrypts the full profile and trip history on device; download decrypts and merges validated trips after explicit confirmation. If another device updated the cloud, the client refuses to overwrite it and requires manual reconciliation, with a 2-minute active-tab change-check. The private backend is a **separate deployable service**, not embedded in GitHub Pages. Optional subscription to Web Push delivers notifications while the app is not the active tab where supported, but requires the hosted backend, VAPID secrets, user permission and device/OS support. Backend does not receive decrypted trip content. This is a single-owner solution, not a general public multi-account sync service.
+
+
+## Deployable personal backend
+
+A separate `backend/compose.yaml` now defines the personal Node API, PostgreSQL 16 and Caddy HTTPS proxy for an owner-provided VPS/domain. This infrastructure is **not automatically provisioned by GitHub Pages**. Personal cloud sync now includes time reminders and the manual Salik crossing log in the encrypted snapshot along with places and trip history. If you change Push reminder times, re-register the device subscription with the backend.

@@ -185,7 +185,8 @@ async function importEncryptedData(event){
 let cloud={api:null,origin:null,revision:null,baseline:null,password:null,busy:false};
 function currentCloudPayload(){
  return {version:1,profile:JSON.parse(exportProfile({home:state.home,work:state.work,settings:state.settings,
-  avoidTolls:state.avoidTolls,destination:state.destination})),trips:readTrips()};
+  avoidTolls:state.avoidTolls,destination:state.destination})),trips:readTrips(),
+  reminders:{...reminderSettings},salikEvents:[...salikEventLog]};
 }
 function cloudMessage(text,error=false){
  const el=$('cloud-status');el.textContent=text;el.dataset.state=error?'error':'ready';
@@ -244,6 +245,7 @@ async function cloudDownload(){
   if(data?.version!==1||!Array.isArray(data.trips)||data.trips.length>3650||
     data.trips.some(t=>!validTrip(t)))throw Error('نسخة الرحلات غير صالحة');
   const profile=importProfile(JSON.stringify(data.profile));
+  if(data.salikEvents!==undefined&&(!Array.isArray(data.salikEvents)||data.salikEvents.length>40||priceCrossings(data.salikEvents)===null))throw Error('سجل سالك السحابي غير صالح');
   if(!confirm('سيتم اعتماد أماكن وإعدادات النسخة السحابية ودمج الرحلات مع المحفوظة هنا. هل تتابع؟'))return;
   if(state.watchId!==null)stopNavigation();
   if(state.previewActive)stopPreview();
@@ -260,6 +262,9 @@ async function cloudDownload(){
   state.destination=profile.destination;$('destination').value=profile.destination;
   state.avoidTolls=profile.avoidTolls;safeStorageSet('avoidTolls',String(state.avoidTolls));$('avoid-tolls').checked=state.avoidTolls;
   $('preview-origin').value=profile.destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
+  if(data.reminders){reminderSettings=parseReminderSettings(data.reminders);safeStorageSet('reminder-settings',JSON.stringify(reminderSettings));
+   $('reminder-enabled').checked=reminderSettings.enabled;$('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;}
+  if(data.salikEvents){salikEventLog=data.salikEvents;safeStorageSet('salik-events',JSON.stringify(salikEventLog));renderSalikEventLog();}
   updateSettingsUI();renderHistory();renderRouteSummary();
   cloud.revision=result.revision;
   // Server may hold fewer trips than this device; next tick can merge back without discarding data.
