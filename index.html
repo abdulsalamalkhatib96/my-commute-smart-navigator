@@ -140,6 +140,24 @@
         <p id="historical" class="help"></p>
         <div class="horizontal wrap-buttons"><button type="button" class="secondary" id="export-json">نسخة JSON</button><button type="button" class="secondary" id="export-csv">تصدير CSV</button><label for="import-json" class="upload-button">استيراد JSON</label><input type="file" id="import-json" accept="application/json,.json" hidden><button type="button" class="secondary danger" id="delete-history">حذف السجل</button></div>
         <section class="profile-backup"><strong>نسخة عناوينك وإعداداتك</strong><p class="help">لا تتضمن مفتاح Mapbox ولا سجل الرحلات (له تصدير منفصل).</p><div class="horizontal wrap-buttons"><button id="export-profile" type="button" class="secondary">تصدير الإعدادات</button><label for="import-profile" class="upload-button">استيراد الإعدادات</label><input type="file" id="import-profile" hidden accept="application/json,.json"></div></section>
+        <section class="profile-backup cloud-panel" aria-label="المزامنة السحابية الخاصة">
+          <h3>المزامنة الآمنة بين أجهزتك</h3>
+          <p class="help">تحتاج Backend خاص يعمل على HTTPS وقاعدة PostgreSQL. تُشفّر العناوين والرحلات داخل المتصفح قبل الإرسال. كلمة مرور التشفير ورمز الاتصال يبقيان في ذاكرة هذه الصفحة فقط، ولا يُرسلان إلى GitHub Pages.</p>
+          <label for="cloud-url">رابط خادمك (HTTPS فقط)</label>
+          <input id="cloud-url" type="url" placeholder="https://your-private-backend.example" autocomplete="url" inputmode="url">
+          <label for="cloud-token">رمز الدخول الخاص بالخادم</label>
+          <input id="cloud-token" type="password" autocomplete="off" placeholder="SYNC_API_TOKEN" >
+          <label for="cloud-password">كلمة مرور تشفير بياناتك (12 حرفًا على الأقل)</label>
+          <input id="cloud-password" type="password" minlength="12" autocomplete="new-password" placeholder="لا يمكن استعادتها عند فقدانها">
+          <div class="horizontal wrap-buttons">
+            <button id="cloud-connect" type="button" class="primary">اتصال آمن</button>
+            <button id="cloud-upload" type="button" class="secondary">رفع نسخة مشفرة</button>
+            <button id="cloud-download" type="button" class="secondary">تنزيل ودمج البيانات</button>
+          </div>
+          <p class="help">بعد الاتصال تتفقد الصفحة تغييراتك كل دقيقتين عندما تكون مفتوحة. تعارض النسخ يحتاج مراجعة؛ لا تُستبدل بيانات أي جهاز بصمت.</p>
+          <div class="horizontal wrap-buttons"><button id="cloud-push" type="button" class="secondary">تفعيل إشعارات الخلفية</button><button id="cloud-push-stop" type="button" class="secondary">إيقاف إشعارات الخلفية</button></div>
+          <p id="cloud-status" role="status" aria-live="polite" class="help">غير متصل بخادم سحابي.</p>
+        </section>
         <section class="profile-backup"><strong>نسخة احتياطية مشفرة بكلمة مرور</strong>
           <p class="help">تضم الأماكن والإعدادات والرحلات. يتم التشفير داخل المتصفح فقط باستخدام AES-GCM؛ لن تتضمن مفتاح Mapbox. فقدان كلمة المرور يعني عدم إمكانية استعادة النسخة.</p>
           <label class="fieldlabel" for="backup-password">كلمة مرور قوية للنسخة (12 حرفًا على الأقل)</label>
@@ -147,7 +165,7 @@
           <div class="horizontal wrap-buttons"><button id="export-secure" type="button" class="secondary">تصدير مشفر</button><label for="import-secure" class="upload-button">استيراد نسخة مشفرة</label><input id="import-secure" type="file" hidden accept="application/json,.json"></div>
         </section>
         <section class="profile-backup"><strong>خصوصية بياناتك</strong><p class="help">يمكنك حذف العناوين ومفتاح Mapbox والرحلات والإعدادات والتذكيرات المخزنة في المتصفح. تأكد من تصدير النسخ الاحتياطية التي تحتاجها أولًا.</p><button type="button" id="clear-all-data" class="secondary danger">حذف كل بياناتي المحلية</button></section>
-        <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. لا يوجد حساب أو مزامنة بين الأجهزة في هذه النسخة.</p>
+        <p class="help">المواقع والرحلات لا تُرسل لخادم خاص بالتطبيق. يرسل المتصفح الموقع والوجهة إلى Mapbox لحساب الطريق فقط. يمكن تفعيل مزامنة شخصية مشفرة إذا شغّلت خادمك الاختياري بنفسك.</p>
       </section>
       <section class="panel"><h2>الحالة والتحذيرات</h2><p class="help" id="feedback" role="status" aria-live="polite">شغّل الخريطة ثم اختر الوجهة.</p><p class="help">المعاينة والتحديث يعملان ما دامت الصفحة مفتوحة. هذه أداة تخطيط ومقارنة وليست بديلًا آمنًا عن تطبيق ملاحة معتمد أثناء القيادة. المتصفح قد يوقف GPS والتحديث في الخلفية أو عند قفل الشاشة. لا تستخدم الهاتف بيدك أثناء القيادة.</p></section>
     </section>

@@ -17,6 +17,7 @@ import {encryptPrivateBackup,decryptPrivateBackup} from './secure-backup.mjs';
 import {validTrip} from './trip-store.mjs';
 import {LIMITS,normalizeBudget,reserveBudget} from './api-budget.mjs';
 import {MAPBOX_PUBLIC_TOKEN} from './public-config.mjs';
+import {cloudApiOrigin,createCloudClient,payloadDigest,revisionMatches,vapidBytes} from './cloud-client.mjs';
 
 const $ = id => document.getElementById(id);
 const storageKey = name => `mycommute.smartnav.${name}`;
@@ -180,6 +181,131 @@ async function importEncryptedData(event){
   }catch(error){feedback('تعذر استيراد النسخة المشفرة: '+error.message,true);}
   finally{$('backup-password').value='';event.target.value='';}
 }
+// Password and sync API bearer token deliberately remain in memory for this tab only.
+let cloud={api:null,origin:null,revision:null,baseline:null,password:null,busy:false};
+function currentCloudPayload(){
+ return {version:1,profile:JSON.parse(exportProfile({home:state.home,work:state.work,settings:state.settings,
+  avoidTolls:state.avoidTolls,destination:state.destination})),trips:readTrips()};
+}
+function cloudMessage(text,error=false){
+ const el=$('cloud-status');el.textContent=text;el.dataset.state=error?'error':'ready';
+}
+function connectionInfo(){
+ const origin=cloudApiOrigin($('cloud-url').value);
+ const token=$('cloud-token').value.trim(),password=$('cloud-password').value;
+ if(password.length<12)throw Error('كلمة مرور التشفير 12 حرفًا على الأقل');
+ return {origin,token,password};
+}
+async function connectCloud(){
+ const {origin,token,password}=connectionInfo();
+ const api=createCloudClient({origin,token});
+ const remote=await api('/v1/snapshot');
+ if(!Number.isSafeInteger(remote.revision)||remote.revision<0)throw Error('استجابة إصدار غير صالحة');
+ const oldOrigin=safeStorageGet('cloud-origin');
+ if(oldOrigin!==origin){safeStorageRemove('cloud-revision');safeStorageRemove('cloud-baseline');}
+ cloud={api,origin,revision:remote.revision,password,busy:false,
+  baseline:safeStorageGet('cloud-baseline')};
+ safeStorageSet('cloud-origin',origin);
+ $('cloud-token').value='';$('cloud-password').value='';
+ const known=Number(safeStorageGet('cloud-revision'));
+ if(!revisionMatches(known,remote.revision)||!cloud.baseline)
+  cloudMessage('تم الاتصال. توجد بيانات أو جلسة جديدة: اختر تنزيل النسخة أو رفعها يدويًا بعد المراجعة.');
+ else cloudMessage('تم الاتصال بالمزامنة. ستفحص الصفحة تعديلاتك تلقائيًا كل دقيقتين.');
+}
+async function cloudUpload({automatic=false}={}){
+ if(!cloud.api||!cloud.password)throw Error('اتصل بالخادم أولًا');
+ if(cloud.busy)return;
+ cloud.busy=true;
+ try{
+  const remote=await cloud.api('/v1/snapshot');
+  const last=Number(safeStorageGet('cloud-revision'));
+  const hasBaseline=cloud.baseline&&safeStorageGet('cloud-origin')===cloud.origin;
+  if(remote.revision!==0&&(!hasBaseline||!revisionMatches(last,remote.revision)))
+    throw Error('نسخة جديدة أو مجهولة على الخادم؛ نزّلها أولًا وادمج الرحلات قبل الرفع.');
+  const payload=currentCloudPayload();
+  const digest=await payloadDigest(payload);
+  if(automatic&&digest===cloud.baseline){cloudMessage('المزامنة متصلة، ولا توجد تغييرات محلية جديدة.');return;}
+  const encrypted=JSON.parse(await encryptPrivateBackup(payload,cloud.password));
+  const saved=await cloud.api('/v1/snapshot',{method:'PUT',body:{expectedRevision:remote.revision,envelope:encrypted}});
+  cloud.revision=saved.revision;cloud.baseline=digest;
+  safeStorageSet('cloud-revision',String(saved.revision));
+  safeStorageSet('cloud-baseline',digest);
+  cloudMessage('تم رفع نسخة مشفرة بنجاح، الإصدار '+saved.revision+'. لا يملك الخادم كلمة مرور فكها.');
+ }finally{cloud.busy=false;}
+}
+async function cloudDownload(){
+ if(!cloud.api||!cloud.password)throw Error('اتصل بالخادم أولًا');
+ if(cloud.busy)return;
+ cloud.busy=true;
+ try{
+  const result=await cloud.api('/v1/snapshot');
+  if(!result.envelope)throw Error('لا توجد نسخة سحابية محفوظة بعد');
+  const data=await decryptPrivateBackup(JSON.stringify(result.envelope),cloud.password);
+  if(data?.version!==1||!Array.isArray(data.trips)||data.trips.length>3650||
+    data.trips.some(t=>!validTrip(t)))throw Error('نسخة الرحلات غير صالحة');
+  const profile=importProfile(JSON.stringify(data.profile));
+  if(!confirm('سيتم اعتماد أماكن وإعدادات النسخة السحابية ودمج الرحلات مع المحفوظة هنا. هل تتابع؟'))return;
+  if(state.watchId!==null)stopNavigation();
+  if(state.previewActive)stopPreview();
+  const count=importTrips(JSON.stringify({version:1,trips:data.trips}),state.settings.maxHistory);
+  for(const which of ['home','work']){
+   if(profile[which])setPlace(which,profile[which].coordinates,profile[which].name);
+   else{
+    state[which]=null;safeStorageRemove(which);
+    const marker=which==='home'?'homeMarker':'workMarker';
+    state[marker]?.remove();state[marker]=null;$(which+'-details').textContent='غير محدد.';
+   }
+  }
+  state.settings=profile.settings;safeStorageSet('settings',JSON.stringify(state.settings));
+  state.destination=profile.destination;$('destination').value=profile.destination;
+  state.avoidTolls=profile.avoidTolls;safeStorageSet('avoidTolls',String(state.avoidTolls));$('avoid-tolls').checked=state.avoidTolls;
+  $('preview-origin').value=profile.destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
+  updateSettingsUI();renderHistory();renderRouteSummary();
+  cloud.revision=result.revision;
+  // Server may hold fewer trips than this device; next tick can merge back without discarding data.
+  cloud.baseline=await payloadDigest(data);
+  safeStorageSet('cloud-revision',String(result.revision));
+  safeStorageSet('cloud-baseline',cloud.baseline);
+  cloudMessage('استُعيدت البيانات وفُحصت: دُمج '+count+' سجل رحلة. لن تُستبدل نسخة الخادم تلقائيًا عند وجود تعارض.');
+ }finally{cloud.busy=false;}
+}
+async function cloudTick(){
+ if(!cloud.api||!cloud.password||cloud.busy||document.hidden||navigator.onLine===false)return;
+ try{
+  const remote=await cloud.api('/v1/snapshot');
+  const known=Number(safeStorageGet('cloud-revision'));
+  if(!cloud.baseline||!revisionMatches(known,remote.revision)){
+   cloudMessage('توجد تغييرات سحابية أو جلسة جديدة. اضغط تنزيل ومراجعة لحل التعارض.',true);return;
+  }
+  await cloudUpload({automatic:true});
+ }catch(error){cloudMessage('توقفت المزامنة التلقائية: '+error.message,true);}
+}
+async function subscribeCloudPush(){
+ if(!cloud.api)throw Error('اتصل بالخادم أولًا');
+ if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw Error('هذا المتصفح لا يدعم Web Push.');
+ const permission=await Notification.requestPermission();
+ if(permission!=='granted')throw Error('لم تمنح إذن إشعارات المتصفح.');
+ const result=await cloud.api('/v1/push/key');
+ if(!result.publicKey)throw Error('لم يتم تكوين مفاتيح VAPID على الخادم.');
+ const worker=await navigator.serviceWorker.ready;
+ let subscription=await worker.pushManager.getSubscription();
+ if(!subscription)subscription=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:vapidBytes(result.publicKey)});
+ const settings=parseReminderSettings({enabled:true,workTime:$('reminder-work').value,homeTime:$('reminder-home').value});
+ await cloud.api('/v1/push/subscriptions',{method:'POST',body:{subscription:subscription.toJSON(),settings}});
+ cloudMessage('تم تفعيل Push على هذا الجهاز إذا كان المتصفح والجهاز يدعمانه، والخادم يعمل بشكل دائم.');
+}
+async function unsubscribeCloudPush(){
+ if(!cloud.api)throw Error('اتصل بالخادم أولًا');
+ const worker=await navigator.serviceWorker.ready,subscription=await worker.pushManager.getSubscription();
+ if(subscription){
+  await cloud.api('/v1/push/subscriptions',{method:'DELETE',body:{endpoint:subscription.endpoint}});
+  await subscription.unsubscribe();
+ }
+ cloudMessage('تم إلغاء الاشتراك في إشعارات Push لهذا المتصفح.');
+}
+async function cloudAction(work){
+ try{await work()}catch(error){cloudMessage(error.message,true);}
+}
 function clearAllMyData(){
  if(!confirm('حذف البيت والعمل ومفتاح Mapbox والإعدادات والرحلات والتذكيرات من هذا المتصفح؟ لا يمكن التراجع.'))return;
  if(state.watchId!==null)stopNavigation();
@@ -190,6 +316,7 @@ function clearAllMyData(){
    for(let i=localStorage.length-1;i>=0;i--){const key=localStorage.key(i);if(key?.startsWith('mycommute.smartnav.'))localStorage.removeItem(key);}
  }catch{feedback('المتصفح منع حذف بعض البيانات المحلية.',true);return;}
  state.home=null;state.work=null;state.token='';state.routes=[];state.settings={...DEFAULT_SETTINGS};reminderSettings={...DEFAULT_REMINDERS};firedReminders=[];
+ cloud={api:null,origin:null,revision:null,baseline:null,password:null,busy:false};
  state.homeMarker?.remove();state.homeMarker=null;state.workMarker?.remove();state.workMarker=null;
  $('home-details').textContent='غير محدد.';$('work-details').textContent='غير محدد.';$('token').value='';
  $('reminder-enabled').checked=false;$('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;
@@ -819,6 +946,12 @@ async function diagnoseMapbox(){
  }finally{button.disabled=false;}
 }
 function wireEvents() {
+  $('cloud-connect').addEventListener('click',()=>cloudAction(connectCloud));
+  $('cloud-upload').addEventListener('click',()=>cloudAction(()=>cloudUpload()));
+  $('cloud-download').addEventListener('click',()=>cloudAction(cloudDownload));
+  $('cloud-push').addEventListener('click',()=>cloudAction(subscribeCloudPush));
+  $('cloud-push-stop').addEventListener('click',()=>cloudAction(unsubscribeCloudPush));
+  window.setInterval(cloudTick,120000);
   $('mapbox-diagnose').addEventListener('click',diagnoseMapbox);
   function showAdvanced(show){
     document.body.classList.toggle('show-advanced',Boolean(show));
@@ -956,6 +1089,7 @@ function wireEvents() {
 }
 wireEvents();
 state.home=readPlace('home');state.work=readPlace('work');state.settings=readSettings();
+$('cloud-url').value=safeStorageGet('cloud-origin')||'';
 if(state.home) $('home-details').textContent=`${state.home.name} — ${escapeCoordinate(state.home.coordinates)}`;
 if(state.work) $('work-details').textContent=`${state.work.name} — ${escapeCoordinate(state.work.coordinates)}`;
 updateSettingsUI();renderHistory();salikEventLog=readSalikEvents();updateManualToll();showConnectionState();showApiBudget();

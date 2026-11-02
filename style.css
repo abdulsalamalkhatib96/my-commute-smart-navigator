@@ -140,3 +140,9 @@ footer a{color:#057c70;font-weight:700}
 
 #eta-calibration{border-right:4px solid #0d927e;line-height:1.65}
 #arrived:not(:disabled){background:#def7e9;color:#0b6c44;border:1px solid #9ddbb9}
+
+.cloud-panel{display:grid;gap:10px;border:1px solid #9bcfc1;background:linear-gradient(140deg,#effbf6,#f6fbff)}
+.cloud-panel h3{margin:0;color:#0d594b}
+.cloud-panel input{width:100%;min-height:45px;border:1px solid #c5dade;border-radius:10px;padding:10px}
+.cloud-panel .horizontal{margin-top:2px}
+#cloud-status[data-state=error]{color:#a23831;font-weight:700}
