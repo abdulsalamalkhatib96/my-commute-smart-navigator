@@ -9,6 +9,19 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: commute
+          POSTGRES_PASSWORD: commute_test_only
+          POSTGRES_DB: commute
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U commute -d commute"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +34,9 @@ jobs:
         run: node --test tests/*.test.mjs
       - name: Install personal backend dependencies
         run: npm install --prefix backend --ignore-scripts --no-audit --no-fund
-      - name: Test personal sync API and Web Push
+      - name: Test personal sync API, PostgreSQL CAS and Web Push
+        env:
+          DATABASE_URL: postgres://commute:commute_test_only@127.0.0.1:5432/commute
         run: node --test backend/tests/*.test.mjs
       - name: Browser bootstrap smoke test (no Mapbox credentials)
         timeout-minutes: 2
