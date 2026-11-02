@@ -24,3 +24,10 @@ test('malformed and duplicate remote trips cannot be merged',async()=>{
  await assert.rejects(mergeTripHistories([base],[{...base,initialEtaSeconds:NaN}]));
  await assert.rejects(mergeTripHistories([],[base,base]));
 });
+
+test('full supported capacity preserves the union when former preference was 180',async()=>{
+ const local=Array.from({length:180},(_,i)=>({...base,id:'local-'+i}));
+ const remote=Array.from({length:80},(_,i)=>({...base,id:'remote-'+i}));
+ const r=await mergeTripHistories(local,remote,{max:365});
+ assert.equal(r.trips.length,260);
+});

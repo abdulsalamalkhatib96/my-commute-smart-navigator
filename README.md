@@ -211,3 +211,8 @@ Encrypted cloud downloads now validate and **preflight** the union of local/remo
 ## Push opt-out and privacy consistency
 
 Saving reminder changes now updates an existing Web Push subscription on the backend when connected. Disabling reminders also unsubscribes the device, and attempts to remove the remote subscription; if remote removal fails, the UI surfaces a warning rather than claiming successful revocation. Clearing all *local* app data similarly attempts Push deregistration before removing credentials. This action explicitly **does not delete encrypted data stored remotely**; a separate owner-authenticated cloud deletion flow exists. On iOS 16.4+ Web Push requires the website installed to Home Screen and a user gesture for permission.
+
+
+## Cloud import history-cap safety
+
+When downloading a larger encrypted remote history, the client now preflights at the maximum supported capacity of 365 trips, then explicitly informs the user before raising the local retention limit to fit all imported records. This avoids a default 180-record setting silently dropping older trips or making cloud restore permanently impossible. Histories larger than 365 still fail without mutating local records, and can be exported separately for archival needs.
