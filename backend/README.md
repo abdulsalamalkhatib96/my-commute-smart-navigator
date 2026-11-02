@@ -36,3 +36,8 @@ GitHub Actions provisions ephemeral PostgreSQL 16 and runs `backend/tests/postgr
 ## Optional self-hosting with HTTPS
 
 On an owner-controlled VPS with DNS pointing `API_DOMAIN` at the server IP and TCP ports 80/443 open, install Docker Compose and set the environment variables from `.env.example`, including a URL-safe random `PG_PASSWORD`, `API_DOMAIN`, `SYNC_API_TOKEN` and VAPID details. From `backend/`, run `docker compose up -d --build`. Compose creates a persistent private PostgreSQL volume and a Caddy HTTPS proxy. Database port is not exposed publicly. Configure secured database backups, host firewall, API hostname, monitoring and certificate renewal. **Creating external hosting and DNS cannot be performed by the current GitHub-only connection.** Never commit your `.env` or the user's encryption password.
+
+
+## Erasing remotely stored data
+
+Authenticated `DELETE /v1/data` with JSON `{"confirmation":"ERASE_REMOTE_DATA"}` erases the current encrypted snapshot, Push subscription records and delivery receipts in a database transaction. The web client requires explicit separate confirmation before using it. This does **not** guarantee removal of external database backups or provider WAL retention, nor does it erase the user's browser-local data. Access remains protected by the personal bearer token.

@@ -1,5 +1,5 @@
 import {verifyToken,allowedOrigin,validEnvelope,validPushSubscription,validPushSettings,parseRevision,parseJson} from './core.mjs';
-import {getSnapshot,putSnapshot,putSubscription,removeSubscription} from './store.mjs';
+import {getSnapshot,putSnapshot,putSubscription,removeSubscription,erasePersonalRecords} from './store.mjs';
 const MAX_BODY=3800000;
 function respond(res,status,data,extra={}){
  res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra});
@@ -35,6 +35,12 @@ export function createHandler({db,token,origin,vapidPublicKey}){
     const newRevision=await putSnapshot(db,revision,input.envelope);
     if(newRevision===null){respond(res,409,{error:'version conflict',current:await getSnapshot(db)});return;}
     respond(res,200,{revision:newRevision});return;
+   }
+   if(url.pathname==='/v1/data'&&req.method==='DELETE'){
+    const input=await readBody(req);
+    if(input?.confirmation!=='ERASE_REMOTE_DATA'){respond(res,422,{error:'explicit confirmation required'});return;}
+    await erasePersonalRecords(db);
+    respond(res,200,{erased:true});return;
    }
    if(url.pathname==='/v1/push/key'&&req.method==='GET'){
     respond(res,200,{publicKey:vapidPublicKey||null});return;

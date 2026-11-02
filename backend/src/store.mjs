@@ -57,6 +57,17 @@ export async function reserveDelivery(db,id,day,slot){
 export async function releaseDelivery(db,id,day,slot){
  await db.query('DELETE FROM deliveries WHERE subscription_id=$1 AND day=$2 AND slot=$3',[id,day,slot]);
 }
+export async function erasePersonalRecords(db){
+ const connection=await db.connect();
+ try{
+  await connection.query('BEGIN');
+  await connection.query('DELETE FROM deliveries');
+  await connection.query('DELETE FROM subscriptions');
+  await connection.query('DELETE FROM private_snapshot');
+  await connection.query('COMMIT');
+ }catch(error){await connection.query('ROLLBACK');throw error;}
+ finally{connection.release();}
+}
 export async function cleanup(db){
  await db.query("DELETE FROM deliveries WHERE created_at < NOW()-INTERVAL '45 days'");
 }
