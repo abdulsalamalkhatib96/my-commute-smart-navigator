@@ -38,6 +38,15 @@ jobs:
         env:
           DATABASE_URL: postgres://commute:commute_test_only@127.0.0.1:5432/commute
         run: node --test backend/tests/*.test.mjs
+      - name: Validate optional self-hosted backend Compose specification
+        env:
+          PG_PASSWORD: ci_mock_password
+          SYNC_API_TOKEN: ci_test_only_abcdefghijklmnopqrstuvwxyz123456
+          VAPID_PUBLIC_KEY: ci-placeholder
+          VAPID_PRIVATE_KEY: ci-placeholder
+          VAPID_SUBJECT: mailto:ci@example.com
+          API_DOMAIN: api.example.com
+        run: docker compose -f backend/compose.yaml config --quiet
       - name: Browser bootstrap smoke test (no Mapbox credentials)
         timeout-minutes: 2
         run: bash tests/browser-smoke.sh
