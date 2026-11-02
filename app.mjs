@@ -330,9 +330,15 @@ async function deleteCloudRecords(){
  if(!confirm('هذا الإجراء سيحذف البيانات والاشتراكات الحالية من خادمك السحابي، دون المساس ببيانات هذا الجهاز. هل تتابع؟'))return;
  if(prompt('اكتب ERASE للتأكيد النهائي')!=='ERASE')return;
  await cloud.api('/v1/data',{method:'DELETE',body:{confirmation:'ERASE_REMOTE_DATA'}});
+ let subscriptionWarning='';
+ try{
+  const registration='serviceWorker' in navigator?await navigator.serviceWorker.getRegistration():null;
+  const subscription=await registration?.pushManager?.getSubscription();
+  if(subscription&&!(await subscription.unsubscribe()))subscriptionWarning=' لم يؤكد المتصفح إلغاء اشتراك Push المحلي.';
+ }catch(error){subscriptionWarning=' تعذر إلغاء اشتراك Push المحلي: '+error.message;}
  safeStorageRemove('cloud-baseline');safeStorageRemove('cloud-revision');
  cloud.baseline=null;cloud.revision=0;
- cloudMessage('حُذفت البيانات الحالية من الخادم. قد تحتفظ الاستضافة بنسخ احتياطية وفق سياستها.');
+ cloudMessage('حُذفت البيانات الحالية من الخادم. قد تحتفظ الاستضافة بنسخ احتياطية وفق سياستها.'+subscriptionWarning,Boolean(subscriptionWarning));
 }
 async function unsubscribeCloudPush(){
  if(!cloud.api)throw Error('اتصل بالخادم أولًا');
