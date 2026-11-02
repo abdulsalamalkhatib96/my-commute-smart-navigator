@@ -125,12 +125,34 @@ function checkReminders(){
    }
  }
 }
-function saveReminders(){
+async function updateExistingPushPreferences(){
+ if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+ const worker=await navigator.serviceWorker.getRegistration();
+ const existing=await worker?.pushManager?.getSubscription();
+ if(!existing)return;
+ if(!reminderSettings.enabled){
+   let remoteError=null;
+   if(cloud.api)try{
+    await cloud.api('/v1/push/subscriptions',{method:'DELETE',body:{endpoint:existing.endpoint}});
+   }catch(error){remoteError=error;}
+   const gone=await existing.unsubscribe();
+   if(!gone)throw Error('المتصفح لم يؤكد إلغاء الاشتراك في Push');
+   if(remoteError)throw Error('توقف Push على هذا المتصفح، لكن تعذر حذف الاشتراك من الخادم: '+remoteError.message);
+   cloudMessage('تم إيقاف اشتراك Push على هذا الجهاز عند إلغاء التذكيرات.');
+   return;
+ }
+ if(!cloud.api)throw Error('أوقات التذكيرات محفوظة محليًا، لكن الخادم غير متصل لتحديث مواعيد Push. أعد الاتصال أولًا.');
+ await cloud.api('/v1/push/subscriptions',{method:'POST',
+  body:{subscription:existing.toJSON(),settings:reminderSettings}});
+ cloudMessage('تم تحديث مواعيد Push المسجلة على الخادم.');
+}
+async function saveReminders(){
  reminderSettings=parseReminderSettings({enabled:$('reminder-enabled').checked,workTime:$('reminder-work').value,homeTime:$('reminder-home').value});
  safeStorageSet('reminder-settings',JSON.stringify(reminderSettings));
  $('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;
  $('reminder-status').textContent=reminderSettings.enabled?'التذكير مفعّل أثناء توفر الصفحة. الإشعارات تعتمد على صلاحية المتصفح.':'التذكير متوقف.';
  feedback('تم حفظ أوقات التذكير على هذا المتصفح.');checkReminders();
+ try{await updateExistingPushPreferences();}catch(error){cloudMessage('حُفظت الأوقات محليًا لكن مزامنة Push تحتاج متابعة: '+error.message,true);}
 }
 async function askNotificationPermission(){
  if(!('Notification' in window)){feedback('هذا المتصفح لا يدعم الإشعارات.',true);return;}
@@ -291,6 +313,7 @@ async function cloudTick(){
 async function subscribeCloudPush(){
  if(!cloud.api)throw Error('اتصل بالخادم أولًا');
  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))throw Error('هذا المتصفح لا يدعم Web Push.');
+ if(!$('reminder-enabled').checked)throw Error('فعّل التذكيرات أولًا واحفظها قبل الاشتراك في Push.');
  const permission=await Notification.requestPermission();
  if(permission!=='granted')throw Error('لم تمنح إذن إشعارات المتصفح.');
  const result=await cloud.api('/v1/push/key');
@@ -323,8 +346,22 @@ async function unsubscribeCloudPush(){
 async function cloudAction(work){
  try{await work()}catch(error){cloudMessage(error.message,true);}
 }
-function clearAllMyData(){
- if(!confirm('حذف البيت والعمل ومفتاح Mapbox والإعدادات والرحلات والتذكيرات من هذا المتصفح؟ لا يمكن التراجع.'))return;
+async function clearAllMyData(){
+ if(!confirm('حذف بيانات هذا المتصفح وإلغاء اشتراك Push على هذا الجهاز؟ هذا لا يحذف النسخة السحابية. لا يمكن التراجع عن الحذف المحلي.'))return;
+ let remotePushWarning='';
+ try{
+  const registration='serviceWorker' in navigator?await navigator.serviceWorker.getRegistration():null;
+  const subscription=await registration?.pushManager?.getSubscription();
+  if(subscription){
+   if(cloud.api){
+    try{await cloud.api('/v1/push/subscriptions',{method:'DELETE',body:{endpoint:subscription.endpoint}});}
+    catch(error){remotePushWarning='تعذر إلغاء الاشتراك على الخادم: '+error.message;}
+   }else remotePushWarning='لم يكن خادم Push متصلًا لإلغاء سجل الاشتراك البعيد.';
+   const disabled=await subscription.unsubscribe();
+   if(!disabled)remotePushWarning+=' لم يؤكد المتصفح إلغاء الاشتراك المحلي.';
+  }
+ }catch(error){remotePushWarning='لم يُؤكد إيقاف Push: '+error.message;}
+
  if(state.watchId!==null)stopNavigation();
  if(state.previewActive)stopPreview();
  state.departureForecastController?.abort();
@@ -339,7 +376,7 @@ function clearAllMyData(){
  $('reminder-enabled').checked=false;$('reminder-work').value=reminderSettings.workTime;$('reminder-home').value=reminderSettings.homeTime;
  $('reminder-status').textContent='التذكيرات متوقفة.';updateSettingsUI();renderHistory();renderRouteSummary();
  state.map?.remove();state.map=null;$('map').textContent='تم حذف بياناتك المحلية. أعد إعداد Mapbox للبدء.';
- feedback('حُذفت البيانات المحلية للتطبيق من هذا المتصفح. قد تبقى ملفات التطبيق غير الشخصية في ذاكرة PWA.');
+ feedback('حُذفت البيانات المحلية للتطبيق. '+(remotePushWarning?'تحذير: '+remotePushWarning+' ':'')+'النسخ السحابية لا تُحذف بهذا الزر؛ استخدم حذف البيانات السحابية بشكل منفصل.');
 }
 
 function clearDepartureForecast(){
@@ -987,7 +1024,7 @@ function wireEvents() {
   $('import-secure').addEventListener('change',importEncryptedData);
   $('reminder-save').addEventListener('click',saveReminders);
   $('reminder-permission').addEventListener('click',askNotificationPermission);
-  $('clear-all-data').addEventListener('click',clearAllMyData);
+  $('clear-all-data').addEventListener('click',()=>{void clearAllMyData();});
   window.setInterval(checkReminders,30000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReminders();});
   $('drive-mode-toggle').addEventListener('click',()=>toggleDriveMode(!state.driveMode));
