@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {database,migrate,getSnapshot,putSnapshot,putSubscription,getSubscriptions,reserveDelivery,releaseDelivery,removeSubscription} from '../src/store.mjs';
+import {database,migrate,getSnapshot,putSnapshot,putSubscription,getSubscriptions,reserveDelivery,releaseDelivery,removeSubscription,erasePersonalRecords} from '../src/store.mjs';
 const url=process.env.DATABASE_URL;
 test('real PostgreSQL CAS, encrypted record and idempotent push delivery',{skip:!url},async()=>{
  const db=database(url);
@@ -22,6 +22,10 @@ test('real PostgreSQL CAS, encrypted record and idempotent push delivery',{skip:
   await releaseDelivery(db,id,'2026-11-02','work');
   assert.equal(await reserveDelivery(db,id,'2026-11-02','work'),true);
   await removeSubscription(db,sub.endpoint);
+  assert.equal((await getSubscriptions(db)).length,0);
+  await putSubscription(db,sub,{enabled:true,workTime:'06:30',homeTime:'17:00'});
+  await erasePersonalRecords(db);
+  assert.equal((await getSnapshot(db)).revision,0);
   assert.equal((await getSubscriptions(db)).length,0);
  }finally{await db.end();}
 });

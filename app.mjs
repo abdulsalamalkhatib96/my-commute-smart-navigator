@@ -299,6 +299,15 @@ async function subscribeCloudPush(){
  await cloud.api('/v1/push/subscriptions',{method:'POST',body:{subscription:subscription.toJSON(),settings}});
  cloudMessage('تم تفعيل Push على هذا الجهاز إذا كان المتصفح والجهاز يدعمانه، والخادم يعمل بشكل دائم.');
 }
+async function deleteCloudRecords(){
+ if(!cloud.api)throw Error('اتصل بالخادم أولًا');
+ if(!confirm('هذا الإجراء سيحذف البيانات والاشتراكات الحالية من خادمك السحابي، دون المساس ببيانات هذا الجهاز. هل تتابع؟'))return;
+ if(prompt('اكتب ERASE للتأكيد النهائي')!=='ERASE')return;
+ await cloud.api('/v1/data',{method:'DELETE',body:{confirmation:'ERASE_REMOTE_DATA'}});
+ safeStorageRemove('cloud-baseline');safeStorageRemove('cloud-revision');
+ cloud.baseline=null;cloud.revision=0;
+ cloudMessage('حُذفت البيانات الحالية من الخادم. قد تحتفظ الاستضافة بنسخ احتياطية وفق سياستها.');
+}
 async function unsubscribeCloudPush(){
  if(!cloud.api)throw Error('اتصل بالخادم أولًا');
  const worker=await navigator.serviceWorker.ready,subscription=await worker.pushManager.getSubscription();
@@ -956,6 +965,7 @@ function wireEvents() {
   $('cloud-download').addEventListener('click',()=>cloudAction(cloudDownload));
   $('cloud-push').addEventListener('click',()=>cloudAction(subscribeCloudPush));
   $('cloud-push-stop').addEventListener('click',()=>cloudAction(unsubscribeCloudPush));
+  $('cloud-delete-remote').addEventListener('click',()=>cloudAction(deleteCloudRecords));
   window.setInterval(cloudTick,120000);
   $('mapbox-diagnose').addEventListener('click',diagnoseMapbox);
   function showAdvanced(show){

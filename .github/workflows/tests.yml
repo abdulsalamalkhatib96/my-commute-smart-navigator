@@ -47,6 +47,8 @@ jobs:
           VAPID_SUBJECT: mailto:ci@example.com
           API_DOMAIN: api.example.com
         run: docker compose -f backend/compose.yaml config --quiet
+      - name: Build personal backend container
+        run: docker build -f backend/Dockerfile backend
       - name: Browser bootstrap smoke test (no Mapbox credentials)
         timeout-minutes: 2
         run: bash tests/browser-smoke.sh
