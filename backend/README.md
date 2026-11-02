@@ -26,3 +26,8 @@ All except `GET /health` require `Authorization: Bearer <SYNC_API_TOKEN>`. Only 
 - Scheduler uses Postgres unique delivery keys for at-most-once sends per day/slot/device; a crash after reservation can miss a reminder, whereas transient failed requests are released for retry. A separate always-on process/managed host is required.
 - To scale to multiple users, implement per-user OAuth/session model, row-level identities, per-device revocation and audit. Do not expose this service as a shared multi-user SaaS.
 - No privileged server secret should ever be sent to GitHub Pages public assets. API token is entered by the owner in the client.
+
+
+## Verification against PostgreSQL
+
+GitHub Actions provisions ephemeral PostgreSQL 16 and runs `backend/tests/postgres.test.mjs` as a real integration test. It verifies table migrations, encrypted JSONB persistence, optimistic CAS conflict handling and database-level push delivery uniqueness. This does not exercise a deployed HTTPS host or external push provider; live end-to-end acceptance remains required.
