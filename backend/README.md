@@ -46,3 +46,8 @@ Authenticated `DELETE /v1/data` with JSON `{"confirmation":"ERASE_REMOTE_DATA"}`
 ## Service health and restart-tolerant reminder delivery
 
 `GET /health` checks a real PostgreSQL connection (`SELECT 1`); responds HTTP 503 if the database is unavailable, not a misleading 200. The scheduler accepts reminders due in the last five Dubai-local minutes, handling short process pauses while the unique database receipt still prevents duplicate sends. The backend must run continuously; interruptions longer than five minutes can still cause missed reminders and device push delivery is not guaranteed. Keep the database durable and externally monitor /health.
+
+
+## Apple Web Push endpoints
+
+The provider endpoint allowlist accepts HTTPS endpoints hosted on documented `*.push.apple.com` subdomains while rejecting lookalike suffixes. Apple Web Push is supported for eligible iOS/iPadOS 16.4+ websites added to Home Screen, with user-approved notification permission. The endpoint validation does not imply successful push delivery without a live VAPID-configured server.
