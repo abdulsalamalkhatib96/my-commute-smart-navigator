@@ -268,13 +268,15 @@ async function cloudDownload(){
   if(data?.version!==1||!Array.isArray(data.trips)||data.trips.length>3650||
     data.trips.some(t=>!validTrip(t)))throw Error('نسخة الرحلات غير صالحة');
   const profile=importProfile(JSON.stringify(data.profile));
-  const mergedTrips=await mergeTripHistories(readTrips(),data.trips,{max:state.settings.maxHistory});
+  const mergedTrips=await mergeTripHistories(readTrips(),data.trips,{max:365});
+  const requiredRetention=Math.max(profile.settings.maxHistory,mergedTrips.trips.length,30);
   if(data.salikEvents!==undefined&&(!Array.isArray(data.salikEvents)||data.salikEvents.length>40||priceCrossings(data.salikEvents)===null))throw Error('سجل سالك السحابي غير صالح');
-  const warning=mergedTrips.conflicts.length?' هناك '+mergedTrips.conflicts.length+' رحلات تحمل المعرّف نفسه وتختلف محتوياتها؛ سيُحتفظ بالنسختين بمعرفين منفصلين.':'';
+  const warning=(mergedTrips.conflicts.length?' هناك '+mergedTrips.conflicts.length+' رحلات تحمل المعرّف نفسه وتختلف محتوياتها؛ سيُحتفظ بالنسختين بمعرفين منفصلين.':'')+
+    (requiredRetention>profile.settings.maxHistory?' سيرتفع حد سجل الرحلات إلى '+requiredRetention+' حتى لا تُفقد سجلات قديمة.':'');
   if(!confirm('سيتم اعتماد أماكن وإعدادات النسخة السحابية ودمج '+mergedTrips.trips.length+' رحلة دون حذف السجلات،'+warning+' هل تتابع؟'))return;
   if(state.watchId!==null)stopNavigation();
   if(state.previewActive)stopPreview();
-  const count=importTrips(JSON.stringify({version:1,trips:mergedTrips.trips}),state.settings.maxHistory);
+  const count=importTrips(JSON.stringify({version:1,trips:mergedTrips.trips}),requiredRetention);
   for(const which of ['home','work']){
    if(profile[which])setPlace(which,profile[which].coordinates,profile[which].name);
    else{
@@ -283,7 +285,7 @@ async function cloudDownload(){
     state[marker]?.remove();state[marker]=null;$(which+'-details').textContent='غير محدد.';
    }
   }
-  state.settings=profile.settings;safeStorageSet('settings',JSON.stringify(state.settings));
+  state.settings={...profile.settings,maxHistory:requiredRetention};safeStorageSet('settings',JSON.stringify(state.settings));
   state.destination=profile.destination;$('destination').value=profile.destination;
   state.avoidTolls=profile.avoidTolls;safeStorageSet('avoidTolls',String(state.avoidTolls));$('avoid-tolls').checked=state.avoidTolls;
   $('preview-origin').value=profile.destination==='home'?'work':'home';state.previewFrom=$('preview-origin').value;
