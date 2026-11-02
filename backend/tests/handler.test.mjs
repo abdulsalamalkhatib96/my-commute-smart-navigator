@@ -29,3 +29,16 @@ test('API protects snapshot, rejects conflicts, never stores plaintext',async()=
   assert.equal((await request(server,'GET','/v1/snapshot')).data.revision,2);
  }finally{server.close()}
 });
+
+test('health route checks real DB readiness rather than falsely saying OK',async()=>{
+ const healthy={async query(sql){assert.equal(sql,'SELECT 1');return {rows:[{x:1}]}}};
+ const unavailable={async query(){throw Error('secret-db-internal-details')}};
+ for(const [db,status] of [[healthy,200],[unavailable,503]]){
+  const server=http.createServer(createHandler({db,token,origin:'https://example.com'}));
+  await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
+  try{
+   const r=await fetch('http://127.0.0.1:'+server.address().port+'/health');
+   assert.equal(r.status,status);assert.equal(JSON.stringify(await r.json()).includes('secret-db'),false);
+  }finally{await new Promise(ok=>server.close(ok));}
+ }
+});

@@ -41,3 +41,8 @@ On an owner-controlled VPS with DNS pointing `API_DOMAIN` at the server IP and T
 ## Erasing remotely stored data
 
 Authenticated `DELETE /v1/data` with JSON `{"confirmation":"ERASE_REMOTE_DATA"}` erases the current encrypted snapshot, Push subscription records and delivery receipts in a database transaction. The web client requires explicit separate confirmation before using it. This does **not** guarantee removal of external database backups or provider WAL retention, nor does it erase the user's browser-local data. Access remains protected by the personal bearer token.
+
+
+## Service health and restart-tolerant reminder delivery
+
+`GET /health` checks a real PostgreSQL connection (`SELECT 1`); responds HTTP 503 if the database is unavailable, not a misleading 200. The scheduler accepts reminders due in the last five Dubai-local minutes, handling short process pauses while the unique database receipt still prevents duplicate sends. The backend must run continuously; interruptions longer than five minutes can still cause missed reminders and device push delivery is not guaranteed. Keep the database durable and externally monitor /health.

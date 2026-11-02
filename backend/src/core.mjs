@@ -25,10 +25,21 @@ export function dubaiDateTime(now=new Date()){
  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).map(p=>[p.type,p.value]));
  return {day:parts.year+'-'+parts.month+'-'+parts.day,time:parts.hour+':'+parts.minute};
 }
-export function dueSlots(settings,now=new Date()){
- const clock=dubaiDateTime(now);
- if(!clock||!settings?.enabled)return [];
- return [['work',settings.workTime],['home',settings.homeTime]].filter(([,time])=>clock.time===time).map(([slot])=>({day:clock.day,slot}));
+/** A five-minute grace window tolerates minute boundaries and brief restarts.
+ * The database enforces once-per-device/slot/day so repeated ticks are harmless. */
+export function dueSlots(settings,now=new Date(),graceMinutes=5){
+ const current=now instanceof Date?now:new Date(now);
+ if(!settings?.enabled||!Number.isFinite(current.getTime())||
+   !Number.isInteger(graceMinutes)||graceMinutes<1||graceMinutes>15)return [];
+ const result=new Map();
+ for(let elapsed=0;elapsed<graceMinutes;elapsed++){
+  const clock=dubaiDateTime(new Date(current.getTime()-elapsed*60000));
+  if(!clock)continue;
+  for(const [slot,time] of [['work',settings.workTime],['home',settings.homeTime]]){
+   if(time===clock.time)result.set(clock.day+':'+slot,{day:clock.day,slot});
+  }
+ }
+ return [...result.values()];
 }
 const PUSH_HOSTS=new Set(['fcm.googleapis.com','updates.push.services.mozilla.com','web.push.apple.com','push.services.mozilla.com','push.apple.com','wns.windows.com']);
 export function validPushSubscription(v){

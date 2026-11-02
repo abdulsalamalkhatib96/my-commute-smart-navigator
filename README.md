@@ -196,3 +196,8 @@ The web app now supports an optional owner-hosted backend (see `backend/README.m
 ## Deployable personal backend
 
 A separate `backend/compose.yaml` now defines the personal Node API, PostgreSQL 16 and Caddy HTTPS proxy for an owner-provided VPS/domain. This infrastructure is **not automatically provisioned by GitHub Pages**. Personal cloud sync now includes time reminders and the manual Salik crossing log in the encrypted snapshot along with places and trip history. If you change Push reminder times, re-register the device subscription with the backend.
+
+
+## Backend readiness
+
+HTTP `/health` verifies PostgreSQL access rather than just the Node server. Push reminders have a five-minute catch-up window after short outages with DB-based de-duplication (no claim of guaranteed delivery). See `backend/README.md` for production limitations.
