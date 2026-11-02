@@ -37,3 +37,11 @@ test('reminder grace window catches short restart, never sends too late',()=>{
  const midnight={enabled:true,workTime:'23:59',homeTime:'17:00'};
  assert.deepEqual(dueSlots(midnight,'2026-11-02T20:02:00Z'),[{day:'2026-11-02',slot:'work'}]);
 });
+
+test('valid Apple Web Push provider subdomains allowed, spoofed hostnames denied',()=>{
+ const keys={auth:'abcdefghijk',p256dh:'A'.repeat(80)};
+ assert.equal(validPushSubscription({endpoint:'https://web.push.apple.com/Q9J79PUSH',keys}),true);
+ assert.equal(validPushSubscription({endpoint:'https://gateway.push.apple.com/path',keys}),true);
+ assert.equal(validPushSubscription({endpoint:'https://web.push.apple.com.evil.example/path',keys}),false);
+ assert.equal(validPushSubscription({endpoint:'https://notpush.apple.com/path',keys}),false);
+});

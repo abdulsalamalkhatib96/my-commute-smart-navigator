@@ -37,3 +37,12 @@ test('browser wake lock is explicitly opt-in and has visible release controls',(
  assert.match(js,/disableWakeLock/);
  assert.match(js,/visibilitychange/);
 });
+
+test('disabling reminders updates or revokes existing server-side Web Push registration',()=>{
+ assert.match(js,/async function updateExistingPushPreferences\(/);
+ assert.match(js,/if\(!reminderSettings\.enabled\)/);
+ assert.match(js,/await existing\.unsubscribe\(\)/);
+ assert.match(js,/await updateExistingPushPreferences\(\)/);
+ assert.match(js,/async function clearAllMyData\(/);
+ assert.match(js,/النسخ السحابية لا تُحذف بهذا الزر/);
+});

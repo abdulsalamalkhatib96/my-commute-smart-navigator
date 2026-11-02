@@ -45,7 +45,7 @@ const PUSH_HOSTS=new Set(['fcm.googleapis.com','updates.push.services.mozilla.co
 export function validPushSubscription(v){
  if(!v||typeof v!=='object'||typeof v.endpoint!=='string'||v.endpoint.length>2048)return false;
  let u;try{u=new URL(v.endpoint)}catch{return false;}
- if(u.protocol!=='https:'||u.username||u.password||u.port||!PUSH_HOSTS.has(u.hostname))return false;
+ if(u.protocol!=='https:'||u.username||u.password||u.port||!(PUSH_HOSTS.has(u.hostname)||u.hostname.endsWith('.push.apple.com')))return false;
  return v.keys&&typeof v.keys.auth==='string'&&/^[\w-]{8,64}$/.test(v.keys.auth)&&typeof v.keys.p256dh==='string'&&/^[\w-]{60,180}$/.test(v.keys.p256dh);
 }
 export function endpointHash(endpoint){return createHash('sha256').update(endpoint).digest('hex');}
