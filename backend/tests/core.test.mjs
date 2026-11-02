@@ -28,3 +28,12 @@ test('Dubai date and schedule, zero default delivery outside window',()=>{
  assert.equal(dueSlots({enabled:false,workTime:'06:30',homeTime:'17:00'},when).length,0);
  assert.equal(allowedOrigin('https://evil.com','https://example.com'),false);
 });
+
+test('reminder grace window catches short restart, never sends too late',()=>{
+ const s={enabled:true,workTime:'06:30',homeTime:'17:00'};
+ assert.deepEqual(dueSlots(s,'2026-11-02T02:34:00Z'),[{day:'2026-11-02',slot:'work'}]);
+ assert.deepEqual(dueSlots(s,'2026-11-02T02:35:00Z'),[]);
+ assert.deepEqual(dueSlots(s,'2026-11-02T02:30:00Z'),[{day:'2026-11-02',slot:'work'}]);
+ const midnight={enabled:true,workTime:'23:59',homeTime:'17:00'};
+ assert.deepEqual(dueSlots(midnight,'2026-11-02T20:02:00Z'),[{day:'2026-11-02',slot:'work'}]);
+});

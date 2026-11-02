@@ -23,7 +23,11 @@ export function createHandler({db,token,origin,vapidPublicKey}){
    res.setHeader('Access-Control-Max-Age','600');
    if(req.method==='OPTIONS'){res.writeHead(204);res.end();return;}
    const url=new URL(req.url||'/', 'http://localhost');
-   if(url.pathname==='/health'&&req.method==='GET'){respond(res,200,{status:'ok'});return;}
+   if(url.pathname==='/health'&&req.method==='GET'){
+    try{await db.query('SELECT 1');respond(res,200,{status:'ok'});}
+    catch{respond(res,503,{status:'unavailable'});}
+    return;
+   }
    const header=req.headers.authorization||'';
    if(!header.startsWith('Bearer ')||!verifyToken(header.slice(7),token)){respond(res,401,{error:'unauthorized'});return;}
    if(url.pathname==='/v1/snapshot'&&req.method==='GET'){
